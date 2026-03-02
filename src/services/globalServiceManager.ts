@@ -21,24 +21,20 @@ export class GlobalServiceManager {
    */
   async initialize(): Promise<void> {
     if (this.isInitialized) {
-      console.log('Global services already initialized');
       return;
     }
 
     try {
-      console.log('🚀 Initializing global services...');
-      
       // Initialize price noise service
       // await this.initializePriceNoiseService();
-      
+
       // Set up global price update listener
       this.setupPriceUpdateListener();
-      
+
       this.isInitialized = true;
-      console.log('✅ Global services initialized successfully');
       
     } catch (error) {
-      console.error('❌ Error initializing global services:', error);
+      console.error('Error initializing global services:', error);
       throw error;
     }
   }
@@ -50,13 +46,11 @@ export class GlobalServiceManager {
     try {
       // Check if noise service is already running
       if (priceNoiseService.isNoiseRunning()) {
-        console.log('Price noise service is already running');
         return;
       }
 
       // Start the noise service
       await priceNoiseService.startNoiseFluctuation();
-      console.log('✅ Price noise service started globally');
       
     } catch (error) {
       console.error('Error initializing price noise service:', error);
@@ -90,7 +84,6 @@ export class GlobalServiceManager {
 
     // Listen for price updates from the noise service
     window.addEventListener('priceUpdate', this.priceUpdateListener as EventListener);
-    console.log('✅ Global price update listener set up');
   }
 
   /**
@@ -124,7 +117,6 @@ export class GlobalServiceManager {
     
     priceNoiseService.stopNoiseFluctuation();
     this.isInitialized = false;
-    console.log('🧹 Global services cleaned up');
   }
 }
 

@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { STARTING_CAPITAL, TRANSACTION_FEE_RATE, MARGIN } from '@/lib/constants';
 
 export interface OrderExecutionResult {
   success: boolean;
@@ -21,10 +22,12 @@ export class OrderExecutionEngine {
     maxStockPosition: 0.20,
     maxCommodityPosition: 0.25,
     maxSectorPosition: 0.40,
-    transactionCost: 0.001, // 0.10%
-    shortSellingInitialMargin: 0.25, // 25%
-    shortSellingMaintenanceMargin: 0.15, // 15%
+    transactionCost: TRANSACTION_FEE_RATE,
+    shortSellingInitialMargin: MARGIN.INITIAL_RATE,
+    shortSellingMaintenanceMargin: MARGIN.MAINTENANCE_RATE,
   };
+
+  private userLocks: Map<string, Promise<void>> = new Map();
 
   async executeOrder(
     userId: string,
@@ -36,194 +39,179 @@ export class OrderExecutionEngine {
     isBuy: boolean,
     isShortSell: boolean = false
   ): Promise<OrderExecutionResult> {
-    try {
-      console.log('Executing order:', { userId, assetId, orderType, quantity, price, isBuy });
-      
-      // 0. Check if competition is active
-      const competitionStatus = await this.checkCompetitionStatus();
-      if (!competitionStatus.active) {
-        return {
-          success: false,
-          message: `Competition is not active. Current status: ${competitionStatus.status}`
-        };
-      }
-
-      // 1. Ensure user has a portfolio
-      await this.ensureUserPortfolio(userId);
-
-      // 2. Validate order constraints
-      const validationResult = await this.validateOrderConstraints(
-        userId,
-        assetId,
-        quantity,
-        price,
-        isBuy,
-        isShortSell
-      );
-
-      if (!validationResult.valid) {
-        return {
-          success: false,
-          message: validationResult.message
-        };
-      }
-
-      // 2. Get current asset price
-      const { data: asset, error: assetError } = await supabase
-        .from('assets')
-        .select('*')
-        .eq('id', assetId)
-        .single();
-
-      if (assetError || !asset) {
-        return {
-          success: false,
-          message: 'Asset not found'
-        };
-      }
-
-      // 3. Determine execution price based on order type
-      let executionPrice: number;
-      if (orderType === 'market') {
-        executionPrice = asset.current_price;
-      } else if (orderType === 'limit' && price) {
-        if (isBuy && price < asset.current_price) {
+    const existingLock = this.userLocks.get(userId) || Promise.resolve();
+    const resultPromise = existingLock.then(async () => {
+      try {
+        // 0. Check if competition is active
+        const competitionStatus = await this.checkCompetitionStatus();
+        if (!competitionStatus.active) {
           return {
             success: false,
-            message: 'Limit price below market price for buy order'
+            message: `Competition is not active. Current status: ${competitionStatus.status}`
           };
         }
-        if (!isBuy && price > asset.current_price) {
-          return {
-            success: false,
-            message: 'Limit price above market price for sell order'
-          };
-        }
-        executionPrice = price;
-      } else if (orderType === 'stop_loss' && stopPrice) {
-        if (isBuy && stopPrice > asset.current_price) {
-          return {
-            success: false,
-            message: 'Stop price above market price for buy order'
-          };
-        }
-        if (!isBuy && stopPrice < asset.current_price) {
-          return {
-            success: false,
-            message: 'Stop price below market price for sell order'
-          };
-        }
-        executionPrice = stopPrice;
-      } else {
-        return {
-          success: false,
-          message: 'Invalid order parameters'
-        };
-      }
 
-      // 4. Calculate transaction costs
-      const totalValue = quantity * executionPrice;
-      const transactionCost = totalValue * this.constraints.transactionCost;
-      const totalCost = isBuy ? totalValue + transactionCost : totalValue - transactionCost;
+        // 1. Ensure user has a portfolio
+        await this.ensureUserPortfolio(userId);
 
-      // 5. Check sufficient funds for buy orders
-      if (isBuy) {
-        const { data: portfolio } = await supabase
-          .from('portfolios')
-          .select('cash_balance')
-          .eq('user_id', userId)
+        // 2. Validate order constraints
+        const validationResult = await this.validateOrderConstraints(
+          userId,
+          assetId,
+          quantity,
+          price,
+          isBuy,
+          isShortSell
+        );
+
+        if (!validationResult.valid) {
+          return {
+            success: false,
+            message: validationResult.message
+          };
+        }
+
+        // 3. Get current asset price
+        const { data: asset, error: assetError } = await supabase
+          .from('assets')
+          .select('*')
+          .eq('id', assetId)
           .single();
 
-        if (!portfolio || portfolio.cash_balance < totalCost) {
+        if (assetError || !asset) {
           return {
             success: false,
-            message: 'Insufficient funds for this order'
-          };
-        }
-      }
-
-      // 6. Check sufficient position for sell orders (unless it's a short sell)
-      if (!isBuy && !isShortSell) {
-        const { data: position } = await supabase
-          .from('positions')
-          .select('quantity')
-          .eq('user_id', userId)
-          .eq('asset_id', assetId)
-          .single();
-
-        if (!position || position.quantity < quantity) {
-          return {
-            success: false,
-            message: 'Insufficient position for this sell order'
-          };
-        }
-      }
-
-      // 7. Execute the order
-      console.log('About to process order execution with:', {
-        userId,
-        assetId,
-        quantity,
-        executionPrice,
-        isBuy,
-        transactionCost,
-        isShortSell
-      });
-      
-      const executionResult = await this.processOrderExecution(
-        userId,
-        assetId,
-        quantity,
-        executionPrice,
-        isBuy,
-        transactionCost,
-        isShortSell
-      );
-      
-      console.log('Order processing result:', executionResult);
-
-      if (executionResult.success) {
-        console.log('Order processing successful, updating portfolio values...');
-        
-        // 8. Update portfolio values
-        try {
-          await this.updatePortfolioValues(userId);
-          console.log('Portfolio values updated successfully');
-        } catch (error) {
-          console.error('Error updating portfolio values:', error);
-          return {
-            success: false,
-            message: `Order processed but failed to update portfolio: ${error instanceof Error ? error.message : 'Unknown error'}`
+            message: 'Asset not found'
           };
         }
 
-        // 9. Check for margin calls on short positions
-        try {
-          await this.checkMarginCalls(userId);
-          console.log('Margin calls checked successfully');
-        } catch (error) {
-          console.error('Error checking margin calls:', error);
-          // Don't fail the order for margin call check errors
+        // 4. Determine execution price based on order type
+        let executionPrice: number;
+        if (orderType === 'market') {
+          executionPrice = asset.current_price;
+        } else if (orderType === 'limit' && price) {
+          if (isBuy && price < asset.current_price) {
+            return {
+              success: false,
+              message: 'Limit price below market price for buy order'
+            };
+          }
+          if (!isBuy && price > asset.current_price) {
+            return {
+              success: false,
+              message: 'Limit price above market price for sell order'
+            };
+          }
+          executionPrice = price;
+        } else if (orderType === 'stop_loss' && stopPrice) {
+          if (isBuy && stopPrice > asset.current_price) {
+            return {
+              success: false,
+              message: 'Stop price above market price for buy order'
+            };
+          }
+          if (!isBuy && stopPrice < asset.current_price) {
+            return {
+              success: false,
+              message: 'Stop price below market price for sell order'
+            };
+          }
+          executionPrice = stopPrice;
+        } else {
+          return {
+            success: false,
+            message: 'Invalid order parameters'
+          };
         }
 
-        console.log('Order execution completed successfully');
+        // 5. Calculate transaction costs
+        const totalValue = quantity * executionPrice;
+        const transactionCost = totalValue * this.constraints.transactionCost;
+        const totalCost = isBuy ? totalValue + transactionCost : totalValue - transactionCost;
+
+        // 6. Check sufficient funds for buy orders
+        if (isBuy) {
+          const { data: portfolio } = await supabase
+            .from('portfolios')
+            .select('cash_balance')
+            .eq('user_id', userId)
+            .single();
+
+          if (!portfolio || portfolio.cash_balance < totalCost) {
+            return {
+              success: false,
+              message: 'Insufficient funds for this order'
+            };
+          }
+        }
+
+        // 7. Check sufficient position for sell orders (unless it's a short sell)
+        if (!isBuy && !isShortSell) {
+          const { data: position } = await supabase
+            .from('positions')
+            .select('quantity')
+            .eq('user_id', userId)
+            .eq('asset_id', assetId)
+            .single();
+
+          if (!position || position.quantity < quantity) {
+            return {
+              success: false,
+              message: 'Insufficient position for this sell order'
+            };
+          }
+        }
+
+        // 8. Execute the order
+        const executionResult = await this.processOrderExecution(
+          userId,
+          assetId,
+          quantity,
+          executionPrice,
+          isBuy,
+          transactionCost,
+          isShortSell
+        );
+
+        if (executionResult.success) {
+          // 9. Update portfolio values
+          try {
+            await this.updatePortfolioValues(userId);
+          } catch (error) {
+            console.error('Error updating portfolio values:', error);
+            return {
+              success: false,
+              message: `Order processed but failed to update portfolio: ${error instanceof Error ? error.message : 'Unknown error'}`
+            };
+          }
+
+          // 10. Check for margin calls on short positions
+          try {
+            await this.checkMarginCalls(userId);
+          } catch (error) {
+            console.error('Error checking margin calls:', error);
+            // Don't fail the order for margin call check errors
+          }
+
+          return {
+            success: true,
+            message: 'Order executed successfully',
+            executedPrice: executionPrice,
+            executedAt: new Date().toISOString()
+          };
+        } else {
+          return executionResult;
+        }
+      } catch (error) {
+        console.error('Order execution error:', error);
         return {
-          success: true,
-          message: 'Order executed successfully',
-          executedPrice: executionPrice,
-          executedAt: new Date().toISOString()
+          success: false,
+          message: `Failed to execute order: ${error instanceof Error ? error.message : 'Unknown error'}`
         };
-      } else {
-        console.error('Order processing failed:', executionResult);
-        return executionResult;
       }
-    } catch (error) {
-      console.error('Order execution error:', error);
-      return {
-        success: false,
-        message: `Failed to execute order: ${error instanceof Error ? error.message : 'Unknown error'}`
-      };
-    }
+    });
+    this.userLocks.set(userId, resultPromise.then(() => {}).catch(() => {}));
+    return resultPromise;
   }
 
   private async validateOrderConstraints(
@@ -392,15 +380,6 @@ export class OrderExecutionEngine {
     isShortSell: boolean = false
   ): Promise<OrderExecutionResult> {
     try {
-      console.log('Starting processOrderExecution with:', {
-        userId,
-        assetId,
-        quantity,
-        executionPrice,
-        isBuy,
-        transactionCost,
-        isShortSell
-      });
       // Get current positions (both long and short)
       const { data: currentPositions } = await supabase
         .from('positions')
@@ -412,14 +391,12 @@ export class OrderExecutionEngine {
       const shortPosition = currentPositions?.find(p => p.is_short);
 
       if (isBuy) {
-        console.log('Processing BUY order');
         if (isShortSell) {
           // This shouldn't happen - short sell should be isBuy = false
           return { success: false, message: 'Invalid order: Cannot buy and short sell simultaneously' };
         }
 
         if (shortPosition && shortPosition.quantity > 0) {
-          console.log('Covering short position:', { shortPosition, quantity });
           // Covering short position
           const coverQuantity = Math.min(quantity, shortPosition.quantity);
           const remainingQuantity = shortPosition.quantity - coverQuantity;
@@ -459,11 +436,9 @@ export class OrderExecutionEngine {
             await this.createOrUpdateLongPosition(userId, assetId, remainingBuyQuantity, executionPrice, longPosition);
           }
         } else {
-          console.log('Regular buy - creating/updating long position');
           // Regular buy - add to long position
           try {
             await this.createOrUpdateLongPosition(userId, assetId, quantity, executionPrice, longPosition);
-            console.log('Long position created/updated successfully');
           } catch (error) {
             console.error('Error creating/updating long position:', error);
             return { success: false, message: `Failed to create/update long position: ${error instanceof Error ? error.message : 'Unknown error'}` };
@@ -471,17 +446,14 @@ export class OrderExecutionEngine {
         }
       } else {
         if (isShortSell) {
-          console.log('Short sell - creating/updating short position');
           // Short sell - add to short position
           try {
             await this.createOrUpdateShortPosition(userId, assetId, quantity, executionPrice, shortPosition);
-            console.log('Short position created/updated successfully');
           } catch (error) {
             console.error('Error creating/updating short position:', error);
             return { success: false, message: `Failed to create/update short position: ${error instanceof Error ? error.message : 'Unknown error'}` };
           }
         } else {
-          console.log('Regular sell - reducing long position');
           // Regular sell - reduce long position
           if (!longPosition || longPosition.quantity < quantity) {
             return { success: false, message: 'Insufficient long position for regular sell' };
@@ -491,7 +463,6 @@ export class OrderExecutionEngine {
           
           if (remainingQuantity > 0) {
             // Partial sell - update long position
-            console.log('Partial sell - updating long position');
             const { error: updateError } = await supabase
               .from('positions')
               .update({
@@ -506,10 +477,8 @@ export class OrderExecutionEngine {
               console.error('Long position update error:', updateError);
               return { success: false, message: 'Failed to update long position' };
             }
-            console.log('Long position updated successfully');
           } else {
             // Complete sell - delete long position
-            console.log('Complete sell - deleting long position');
             const { error: deleteError } = await supabase
               .from('positions')
               .delete()
@@ -519,7 +488,6 @@ export class OrderExecutionEngine {
               console.error('Long position deletion error:', deleteError);
               return { success: false, message: 'Failed to delete long position' };
             }
-            console.log('Long position deleted successfully');
           }
         }
       }
@@ -550,7 +518,6 @@ export class OrderExecutionEngine {
       }
 
       // Get current cash balance and update it
-      console.log('Updating cash balance with change:', cashChange);
       const { data: currentPortfolio } = await supabase
         .from('portfolios')
         .select('cash_balance')
@@ -559,8 +526,6 @@ export class OrderExecutionEngine {
 
       if (currentPortfolio) {
         const newCashBalance = currentPortfolio.cash_balance + cashChange;
-        console.log('New cash balance:', newCashBalance);
-        
         const { error: cashError } = await supabase
           .from('portfolios')
           .update({
@@ -573,7 +538,6 @@ export class OrderExecutionEngine {
           console.error('Cash balance update error:', cashError);
           return { success: false, message: 'Failed to update cash balance' };
         }
-        console.log('Cash balance updated successfully');
       } else {
         console.error('No portfolio found for user:', userId);
         return { success: false, message: 'Portfolio not found' };
@@ -600,8 +564,8 @@ export class OrderExecutionEngine {
           .from('portfolios')
           .insert({
             user_id: userId,
-            cash_balance: 500000.00, // Starting capital
-            total_value: 500000.00,
+            cash_balance: STARTING_CAPITAL,
+            total_value: STARTING_CAPITAL,
             profit_loss: 0.00,
             profit_loss_percentage: 0.00
           });
@@ -622,16 +586,16 @@ export class OrderExecutionEngine {
       const { data: round } = await supabase
         .from("competition_rounds")
         .select("status")
-        .eq("round_number", 1)
+        .eq("status", "active")
         .single();
 
       if (!round) {
         return { active: false, status: "not_initialized" };
       }
 
-      return { 
-        active: round.status === "active", 
-        status: round.status 
+      return {
+        active: true,
+        status: round.status
       };
     } catch (error) {
       console.error("Error checking competition status:", error);
@@ -697,7 +661,7 @@ export class OrderExecutionEngine {
         // Total portfolio value = Cash + Long Positions - Short Positions (liabilities)
         const totalPortfolioValue = portfolio.cash_balance + totalLongValue - totalShortValue;
         // The initial value should be the starting capital (500,000)
-        const initialValue = 500000; // Starting capital amount
+        const initialValue = STARTING_CAPITAL;
         const profitLoss = totalPortfolioValue - initialValue;
         const profitLossPercentage = initialValue > 0 ? (profitLoss / initialValue) * 100 : 0;
 
@@ -740,7 +704,10 @@ export class OrderExecutionEngine {
       for (const position of shortPositions) {
         const currentPrice = position.assets?.current_price || 0;
         const positionValue = position.quantity * currentPrice;
-        const marginLevel = (portfolio.cash_balance / positionValue) * 100;
+        // Equity for this short position = initial_margin_deposited - unrealized_loss
+        const unrealizedLoss = position.quantity * (currentPrice - position.average_price);
+        const equity = (position.initial_margin || positionValue * this.constraints.shortSellingInitialMargin) - Math.max(0, unrealizedLoss);
+        const marginLevel = (equity / positionValue) * 100;
 
         // Check if margin level is below maintenance margin (15%)
         if (marginLevel < (this.constraints.shortSellingMaintenanceMargin * 100)) {
@@ -815,7 +782,6 @@ export class OrderExecutionEngine {
           message: `Position automatically liquidated due to margin call.`
         });
 
-      console.log(`Position ${positionId} liquidated for user ${userId}`);
     } catch (error) {
       console.error('Position liquidation error:', error);
     }
@@ -831,14 +797,6 @@ export class OrderExecutionEngine {
     executionPrice: number,
     existingLongPosition: any
   ): Promise<void> {
-    console.log('createOrUpdateLongPosition called with:', {
-      userId,
-      assetId,
-      quantity,
-      executionPrice,
-      existingLongPosition
-    });
-    
     if (existingLongPosition) {
       // Update existing long position
       const newQuantity = existingLongPosition.quantity + quantity;
@@ -862,7 +820,6 @@ export class OrderExecutionEngine {
         throw new Error('Failed to update long position');
       }
     } else {
-      console.log('Creating new long position');
       // Create new long position
       const { error } = await supabase
         .from('positions')
@@ -882,7 +839,6 @@ export class OrderExecutionEngine {
         console.error('Long position creation error:', error);
         throw new Error('Failed to create long position');
       }
-      console.log('New long position created successfully');
     }
   }
 

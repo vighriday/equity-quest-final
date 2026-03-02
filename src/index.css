@@ -2,74 +2,93 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
-    /* Enhanced Fintech Dark Theme */
-    --background: 222 47% 4%;
-    --foreground: 210 40% 98%;
+    /* Deep Space Dark Theme — Premium Fintech Aesthetic */
+    --background: 228 25% 4%;
+    --foreground: 0 0% 96%;
 
-    --card: 222 47% 8%;
-    --card-foreground: 210 40% 98%;
+    --card: 228 22% 7%;
+    --card-foreground: 0 0% 96%;
 
-    --popover: 222 47% 8%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 228 22% 9%;
+    --popover-foreground: 0 0% 96%;
 
-    --primary: 217 91% 65%;
-    --primary-foreground: 210 40% 98%;
+    /* Electric Blue Primary — Signature Accent */
+    --primary: 217 100% 62%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 217 19% 22%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 225 18% 16%;
+    --secondary-foreground: 0 0% 90%;
 
-    --muted: 217 19% 15%;
-    --muted-foreground: 215 20% 85%;
+    --muted: 225 18% 13%;
+    --muted-foreground: 220 15% 65%;
 
-    --accent: 217 91% 65%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 217 100% 62%;
+    --accent-foreground: 0 0% 100%;
 
-    --success: 142 76% 42%;
-    --success-foreground: 144 61% 20%;
+    --success: 160 84% 44%;
+    --success-foreground: 160 60% 15%;
 
-    --profit: 142 71% 52%;
-    --profit-light: 142 76% 42%;
-    
-    --loss: 0 84% 65%;
-    --loss-light: 0 72% 56%;
+    /* Vibrant Profit Green */
+    --profit: 160 84% 44%;
+    --profit-light: 160 70% 35%;
 
-    --destructive: 0 84% 65%;
-    --destructive-foreground: 210 40% 98%;
+    /* Coral Red Loss */
+    --loss: 4 90% 58%;
+    --loss-light: 4 80% 48%;
 
-    --border: 217 19% 22%;
-    --input: 217 19% 22%;
-    --ring: 217 91% 65%;
+    --destructive: 4 90% 58%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 225 18% 16%;
+    --input: 225 18% 14%;
+    --ring: 217 100% 62%;
 
     --radius: 0.75rem;
 
-    /* Enhanced Trading specific colors */
-    --buy: 142 76% 42%;
-    --sell: 0 84% 65%;
+    /* Trading Colors */
+    --buy: 160 84% 44%;
+    --sell: 4 90% 58%;
     --pending: 45 93% 52%;
     --warning: 38 92% 50%;
-    
-    /* Enhanced Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(217, 91%, 65%), hsl(217, 91%, 75%));
-    --gradient-success: linear-gradient(135deg, hsl(142, 76%, 42%), hsl(142, 76%, 52%));
-    --gradient-danger: linear-gradient(135deg, hsl(0, 84%, 65%), hsl(0, 84%, 75%));
-    --gradient-warning: linear-gradient(135deg, hsl(38, 92%, 50%), hsl(38, 92%, 60%));
-    --gradient-card: linear-gradient(135deg, hsl(222, 47%, 8%), hsl(222, 47%, 12%));
-    
-    /* Enhanced Shadows - Reduced for better text readability */
-    --shadow-glow: 0 0 20px hsl(217 91% 65% / 0.2);
-    --shadow-card: 0 4px 16px hsl(222 47% 2% / 0.4);
-    --shadow-elevated: 0 8px 24px hsl(222 47% 2% / 0.5);
-    --shadow-inset: inset 0 1px 2px hsl(222 47% 2% / 0.2);
-    
-    /* Animation variables */
-    --animation-duration: 0.3s;
-    --animation-timing: cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Glass Morphism */
+    --glass-bg: 228 22% 8%;
+    --glass-border: 0 0% 100%;
+    --glass-opacity: 0.06;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(217 100% 62%), hsl(240 80% 65%));
+    --gradient-success: linear-gradient(135deg, hsl(160 84% 44%), hsl(160 84% 54%));
+    --gradient-danger: linear-gradient(135deg, hsl(4 90% 58%), hsl(4 90% 68%));
+    --gradient-card: linear-gradient(145deg, hsl(228 22% 8%), hsl(228 22% 11%));
+    --gradient-surface: linear-gradient(180deg, hsl(228 25% 6%), hsl(228 25% 4%));
+
+    /* Shadows */
+    --shadow-sm: 0 2px 8px hsl(228 25% 2% / 0.4);
+    --shadow-md: 0 4px 16px hsl(228 25% 2% / 0.5);
+    --shadow-lg: 0 8px 32px hsl(228 25% 2% / 0.6);
+    --shadow-glow: 0 0 24px hsl(217 100% 62% / 0.15);
+    --shadow-glow-success: 0 0 24px hsl(160 84% 44% / 0.15);
+    --shadow-glow-danger: 0 0 24px hsl(4 90% 58% / 0.15);
+
+    /* Animation */
+    --duration-fast: 0.15s;
+    --duration-normal: 0.25s;
+    --duration-slow: 0.4s;
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+    /* Sidebar */
+    --sidebar-background: 228 22% 6%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 217 100% 62%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 225 18% 16%;
+    --sidebar-accent-foreground: 0 0% 96%;
+    --sidebar-border: 225 18% 14%;
+    --sidebar-ring: 217 100% 62%;
   }
 }
 
@@ -79,164 +98,369 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
-    text-shadow: none; /* Remove any text shadows */
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
-  /* Ensure text is crisp and readable */
-  h1, h2, h3, h4, h5, h6, p, span, div {
-    text-shadow: none;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.4);
+  }
+
+  /* Selection styling */
+  ::selection {
+    background: hsl(var(--primary) / 0.3);
+    color: hsl(var(--foreground));
   }
 }
 
 @layer components {
-  /* Enhanced Card Styles */
+  /* === GLASS CARDS === */
+  .glass-card {
+    background: hsl(var(--glass-bg) / 0.85);
+    backdrop-filter: blur(16px) saturate(1.5);
+    -webkit-backdrop-filter: blur(16px) saturate(1.5);
+    border: 1px solid hsl(var(--glass-border) / var(--glass-opacity));
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    transition: all var(--duration-normal) var(--ease-out);
+  }
+
+  .glass-card:hover {
+    border-color: hsl(var(--primary) / 0.2);
+    box-shadow: var(--shadow-lg), var(--shadow-glow);
+    transform: translateY(-1px);
+  }
+
+  /* Enhanced Card — Standard elevated card */
   .card-enhanced {
-    @apply bg-gradient-to-br from-card to-card/90;
-    box-shadow: var(--shadow-card);
-    border: 1px solid hsl(var(--border) / 0.5);
-    transition: all var(--animation-duration) var(--animation-timing);
+    background: var(--gradient-card);
+    border: 1px solid hsl(var(--border) / 0.6);
+    box-shadow: var(--shadow-sm);
+    transition: all var(--duration-normal) var(--ease-out);
   }
 
   .card-enhanced:hover {
-    box-shadow: var(--shadow-elevated);
-    border-color: hsl(var(--primary) / 0.3);
-    transform: translateY(-2px);
-  }
-
-  /* Trading Button Styles */
-  .btn-buy {
-    @apply bg-gradient-to-r from-buy to-buy/90 text-white font-semibold px-6 py-2.5;
-    box-shadow: 0 4px 16px hsl(var(--buy) / 0.3);
-    transition: all var(--animation-duration) var(--animation-timing);
-  }
-
-  .btn-buy:hover {
-    @apply from-buy/90 to-buy;
-    box-shadow: 0 6px 24px hsl(var(--buy) / 0.4);
+    border-color: hsl(var(--primary) / 0.25);
+    box-shadow: var(--shadow-md);
     transform: translateY(-1px);
+  }
+
+  /* === GRADIENT TEXT === */
+  .text-gradient-primary {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-success {
+    background: var(--gradient-success);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* === TRADING BUTTONS === */
+  .btn-buy {
+    @apply font-semibold px-6 py-2.5 rounded-lg text-white;
+    background: linear-gradient(135deg, hsl(var(--buy)), hsl(var(--buy) / 0.85));
+    box-shadow: 0 4px 12px hsl(var(--buy) / 0.25), inset 0 1px 0 hsl(0 0% 100% / 0.1);
+    transition: all var(--duration-fast) var(--ease-out);
+  }
+
+  .btn-buy:hover:not(:disabled) {
+    box-shadow: 0 6px 20px hsl(var(--buy) / 0.35), inset 0 1px 0 hsl(0 0% 100% / 0.15);
+    transform: translateY(-1px);
+    filter: brightness(1.1);
+  }
+
+  .btn-buy:active:not(:disabled) {
+    transform: translateY(0);
+    filter: brightness(0.95);
   }
 
   .btn-sell {
-    @apply bg-gradient-to-r from-sell to-sell/90 text-white font-semibold px-6 py-2.5;
-    box-shadow: 0 4px 16px hsl(var(--sell) / 0.3);
-    transition: all var(--animation-duration) var(--animation-timing);
+    @apply font-semibold px-6 py-2.5 rounded-lg text-white;
+    background: linear-gradient(135deg, hsl(var(--sell)), hsl(var(--sell) / 0.85));
+    box-shadow: 0 4px 12px hsl(var(--sell) / 0.25), inset 0 1px 0 hsl(0 0% 100% / 0.1);
+    transition: all var(--duration-fast) var(--ease-out);
   }
 
-  .btn-sell:hover {
-    @apply from-sell/90 to-sell;
-    box-shadow: 0 6px 24px hsl(var(--sell) / 0.4);
+  .btn-sell:hover:not(:disabled) {
+    box-shadow: 0 6px 20px hsl(var(--sell) / 0.35), inset 0 1px 0 hsl(0 0% 100% / 0.15);
     transform: translateY(-1px);
+    filter: brightness(1.1);
+  }
+
+  .btn-sell:active:not(:disabled) {
+    transform: translateY(0);
+    filter: brightness(0.95);
   }
 
   .btn-primary {
-    @apply bg-gradient-to-r from-primary to-primary/90 text-white font-semibold px-6 py-2.5;
-    box-shadow: 0 4px 16px hsl(var(--primary) / 0.3);
-    transition: all var(--animation-duration) var(--animation-timing);
+    @apply font-semibold px-6 py-2.5 rounded-lg text-white;
+    background: var(--gradient-primary);
+    box-shadow: 0 4px 12px hsl(var(--primary) / 0.25), inset 0 1px 0 hsl(0 0% 100% / 0.1);
+    transition: all var(--duration-fast) var(--ease-out);
   }
 
-  .btn-primary:hover {
-    @apply from-primary/90 to-primary;
-    box-shadow: 0 6px 24px hsl(var(--primary) / 0.4);
+  .btn-primary:hover:not(:disabled) {
+    box-shadow: 0 6px 20px hsl(var(--primary) / 0.35), inset 0 1px 0 hsl(0 0% 100% / 0.15);
     transform: translateY(-1px);
+    filter: brightness(1.1);
   }
 
-  /* Price Change Animations */
+  /* === PRICE ANIMATIONS === */
   .price-up {
-    animation: priceUp 0.6s var(--animation-timing);
+    animation: priceFlashUp 0.6s var(--ease-out);
   }
 
   .price-down {
-    animation: priceDown 0.6s var(--animation-timing);
+    animation: priceFlashDown 0.6s var(--ease-out);
   }
 
-  /* Glow Effects - Reduced for better text readability */
+  /* === GLOW EFFECTS === */
   .glow-primary {
-    box-shadow: 0 0 20px hsl(var(--primary) / 0.2);
+    box-shadow: var(--shadow-glow);
   }
 
   .glow-success {
-    box-shadow: 0 0 15px hsl(var(--profit) / 0.2);
+    box-shadow: var(--shadow-glow-success);
   }
 
   .glow-danger {
-    box-shadow: 0 0 15px hsl(var(--loss) / 0.2);
+    box-shadow: var(--shadow-glow-danger);
   }
 
-  /* Pulse Animation for Live Data */
+  /* === PULSE FOR LIVE DATA === */
   .pulse-live {
-    animation: pulseLive 2s infinite;
+    animation: pulseLive 2s ease-in-out infinite;
   }
 
-  /* Loading Skeleton */
-  .skeleton {
-    @apply bg-muted animate-pulse rounded;
+  /* === ANIMATED BORDER GRADIENT === */
+  .border-gradient {
+    position: relative;
+    border: 1px solid transparent;
+    background-clip: padding-box;
   }
 
-  /* Enhanced Input Styles */
+  .border-gradient::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background: var(--gradient-primary);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    padding: 1px;
+    opacity: 0.4;
+    transition: opacity var(--duration-normal) var(--ease-out);
+  }
+
+  .border-gradient:hover::before {
+    opacity: 0.8;
+  }
+
+  /* === INPUT STYLES === */
   .input-enhanced {
-    @apply bg-input/80 border-border/50;
-    transition: all var(--animation-duration) var(--animation-timing);
+    @apply bg-input/80 border-border/60 rounded-lg;
+    transition: all var(--duration-fast) var(--ease-out);
   }
 
   .input-enhanced:focus {
-    @apply border-primary ring-2 ring-primary/20;
-    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
+    @apply border-primary/60 ring-2 ring-primary/15;
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.08);
   }
 
-  /* Status Badges */
+  /* === STATUS BADGES === */
   .badge-executed {
-    @apply bg-gradient-to-r from-profit to-profit/80 text-white;
-    box-shadow: 0 2px 8px hsl(var(--profit) / 0.3);
+    @apply text-xs font-medium px-2.5 py-0.5 rounded-full;
+    background: hsl(var(--profit) / 0.15);
+    color: hsl(var(--profit));
+    border: 1px solid hsl(var(--profit) / 0.2);
   }
 
   .badge-pending {
-    @apply bg-gradient-to-r from-pending to-pending/80 text-white;
-    box-shadow: 0 2px 8px hsl(var(--pending) / 0.3);
+    @apply text-xs font-medium px-2.5 py-0.5 rounded-full;
+    background: hsl(var(--pending) / 0.15);
+    color: hsl(var(--pending));
+    border: 1px solid hsl(var(--pending) / 0.2);
+  }
+
+  .badge-failed {
+    @apply text-xs font-medium px-2.5 py-0.5 rounded-full;
+    background: hsl(var(--loss) / 0.15);
+    color: hsl(var(--loss));
+    border: 1px solid hsl(var(--loss) / 0.2);
   }
 
   .badge-cancelled {
-    @apply bg-gradient-to-r from-muted to-muted/80 text-muted-foreground;
+    @apply text-xs font-medium px-2.5 py-0.5 rounded-full;
+    background: hsl(var(--muted) / 0.5);
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* === SKELETON LOADING === */
+  .skeleton {
+    @apply bg-muted/60 rounded-lg;
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted) / 0.4) 25%,
+      hsl(var(--muted) / 0.6) 50%,
+      hsl(var(--muted) / 0.4) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  /* === STAT CARD === */
+  .stat-card {
+    @apply relative overflow-hidden;
+    background: var(--gradient-card);
+    border: 1px solid hsl(var(--border) / 0.5);
+    border-radius: var(--radius);
+    transition: all var(--duration-normal) var(--ease-out);
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.3), transparent);
+  }
+
+  .stat-card:hover {
+    border-color: hsl(var(--primary) / 0.2);
+    box-shadow: var(--shadow-md);
+  }
+
+  /* === TABLE STYLES === */
+  .table-premium thead tr {
+    @apply border-b border-border/40;
+  }
+
+  .table-premium thead th {
+    @apply text-xs font-semibold text-muted-foreground uppercase tracking-wider py-3 px-4;
+  }
+
+  .table-premium tbody tr {
+    @apply border-b border-border/20 transition-colors;
+  }
+
+  .table-premium tbody tr:hover {
+    background: hsl(var(--muted) / 0.3);
+  }
+
+  .table-premium tbody td {
+    @apply py-3.5 px-4 text-sm;
+  }
+
+  /* === ANIMATED GRADIENT MESH (for backgrounds) === */
+  .gradient-mesh {
+    background:
+      radial-gradient(ellipse at 20% 50%, hsl(217 100% 62% / 0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, hsl(240 80% 65% / 0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 40% 80%, hsl(160 84% 44% / 0.04) 0%, transparent 50%),
+      hsl(var(--background));
+  }
+
+  /* === TICKER STRIP === */
+  .ticker-strip {
+    @apply overflow-hidden whitespace-nowrap;
+    mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+  }
+
+  .ticker-scroll {
+    display: inline-block;
+    animation: tickerScroll 40s linear infinite;
+  }
+
+  .ticker-scroll:hover {
+    animation-play-state: paused;
+  }
+
+  /* === PODIUM STYLES (Leaderboard) === */
+  .podium-gold {
+    background: linear-gradient(135deg, hsl(45 100% 50% / 0.15), hsl(45 100% 40% / 0.05));
+    border: 1px solid hsl(45 100% 50% / 0.25);
+  }
+
+  .podium-silver {
+    background: linear-gradient(135deg, hsl(220 10% 70% / 0.12), hsl(220 10% 60% / 0.04));
+    border: 1px solid hsl(220 10% 70% / 0.2);
+  }
+
+  .podium-bronze {
+    background: linear-gradient(135deg, hsl(25 70% 50% / 0.12), hsl(25 70% 40% / 0.04));
+    border: 1px solid hsl(25 70% 50% / 0.2);
   }
 }
 
-@keyframes priceUp {
-  0% {
-    background-color: hsl(var(--profit) / 0.2);
-    transform: scale(1);
-  }
-  50% {
-    background-color: hsl(var(--profit) / 0.4);
-    transform: scale(1.02);
-  }
-  100% {
-    background-color: transparent;
-    transform: scale(1);
-  }
+/* === KEYFRAMES === */
+@keyframes priceFlashUp {
+  0% { background-color: hsl(var(--profit) / 0.3); }
+  100% { background-color: transparent; }
 }
 
-@keyframes priceDown {
-  0% {
-    background-color: hsl(var(--loss) / 0.2);
-    transform: scale(1);
-  }
-  50% {
-    background-color: hsl(var(--loss) / 0.4);
-    transform: scale(1.02);
-  }
-  100% {
-    background-color: transparent;
-    transform: scale(1);
-  }
+@keyframes priceFlashDown {
+  0% { background-color: hsl(var(--loss) / 0.3); }
+  100% { background-color: transparent; }
 }
 
 @keyframes pulseLive {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.7;
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes tickerScroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* === ACCESSIBILITY === */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

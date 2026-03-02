@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import CollapsibleMarketOverview from "@/components/CollapsibleMarketOverview";
@@ -10,9 +10,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TrendingUp, TrendingDown, Wallet, PieChart, AlertCircle, ArrowUpRight, ArrowDownRight, Activity, Clock, Shield } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, PieChart, AlertCircle, ArrowUpRight, ArrowDownRight, Activity, Clock, Shield, Newspaper, BarChart3, DollarSign, Percent, ShoppingCart } from "lucide-react";
+import { AnimatedCounter } from "@/components/AnimatedCounter";
+import { EmptyState } from "@/components/EmptyState";
 import { toast } from "sonner";
 import { orderExecutionEngine } from "@/services/orderExecution";
+import { STARTING_CAPITAL } from "@/lib/constants";
 import MarginWarningSystem from "@/components/MarginWarningSystem";
 import TradingHaltBanner from "@/components/TradingHaltBanner";
 import TradingQueue from "@/components/TradingQueue";
@@ -67,18 +70,24 @@ const Dashboard = () => {
   const [competitionStatus, setCompetitionStatus] = useState<string>("not_started");
   const [isShortSell, setIsShortSell] = useState(false);
   const [session, setSession] = useState<{ user: { id: string } } | null>(null);
-  const [debugInfo, setDebugInfo] = useState<Record<string, unknown> | null>(null);
-  
+
   // Real-time calculated portfolio values
   const [calculatedPortfolio, setCalculatedPortfolio] = useState<Portfolio | null>(null);
+
+  // Timer ref for batched price change animation clearing
+  const priceChangeTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Rate limiting ref for order placement
+  const lastOrderTimeRef = useRef<number>(0);
 
   const fetchCompetitionStatus = useCallback(async () => {
     try {
       const { data } = await supabase
         .from("competition_rounds")
         .select("status")
-        .eq("round_number", 1)
-        .single();
+        .eq("status", "active")
+        .limit(1)
+        .maybeSingle();
       
       if (data) {
         setCompetitionStatus(data.status);
@@ -136,21 +145,23 @@ const Dashboard = () => {
       return;
     }
 
-    // Track price changes for animations
+    // Track price changes for animations using Map for O(1) lookups
     if (data) {
       setAssets(prevAssets => {
+        const prevMap = new Map(prevAssets.map(a => [a.id, a]));
         const newPriceChanges: Record<string, 'up' | 'down' | null> = {};
         data.forEach(asset => {
-          const prevAsset = prevAssets.find(a => a.id === asset.id);
-          if (prevAsset && prevAsset.current_price !== asset.current_price) {
-            newPriceChanges[asset.id] = asset.current_price > prevAsset.current_price ? 'up' : 'down';
-            // Clear animation after 1 second
-            setTimeout(() => {
-              setPriceChanges(prev => ({ ...prev, [asset.id]: null }));
-            }, 1000);
+          const prev = prevMap.get(asset.id);
+          if (prev && prev.current_price !== asset.current_price) {
+            newPriceChanges[asset.id] = asset.current_price > prev.current_price ? 'up' : 'down';
           }
         });
         setPriceChanges(prev => ({ ...prev, ...newPriceChanges }));
+        // Single batched timer to clear all animations
+        if (priceChangeTimerRef.current) clearTimeout(priceChangeTimerRef.current);
+        priceChangeTimerRef.current = setTimeout(() => {
+          setPriceChanges({});
+        }, 1000);
         return data;
       });
     }
@@ -222,12 +233,9 @@ const Dashboard = () => {
 
     // Calculate total portfolio value: Cash + Long Assets - Short Liabilities
     const totalPortfolioValue = portfolio.cash_balance + totalLongValue - totalShortValue;
-    
-    // The initial value should be the starting capital (500,000)
-    const initialValue = 500000; // Starting capital amount
-    const profitLoss = totalPortfolioValue - initialValue;
-    const profitLossPercentage = initialValue > 0 ? (profitLoss / initialValue) * 100 : 0;
 
+    const profitLoss = totalPortfolioValue - STARTING_CAPITAL;
+    const profitLossPercentage = STARTING_CAPITAL > 0 ? (profitLoss / STARTING_CAPITAL) * 100 : 0;
 
     setCalculatedPortfolio({
       ...portfolio,
@@ -296,9 +304,8 @@ const Dashboard = () => {
 
     // Listen for live price updates from the noise service
     const handleAssetPriceUpdate = (event: CustomEvent) => {
-      const { assetId, newPrice, changePercentage } = event.detail;
-      console.log(`📊 Live price update: Asset ${assetId} = ₹${newPrice} (${changePercentage > 0 ? '+' : ''}${changePercentage.toFixed(3)}%)`);
-      
+      const { assetId, newPrice } = event.detail;
+
       // Update the assets array with the new price
       setAssets(prevAssets => 
         prevAssets.map(asset => 
@@ -317,6 +324,7 @@ const Dashboard = () => {
       supabase.removeChannel(portfolioChannel);
       supabase.removeChannel(competitionChannel);
       window.removeEventListener('assetPriceUpdate', handleAssetPriceUpdate as EventListener);
+      if (priceChangeTimerRef.current) clearTimeout(priceChangeTimerRef.current);
     };
   }, [fetchData, fetchAssets, fetchNews, fetchPortfolio, fetchCompetitionStatus]);
 
@@ -378,9 +386,8 @@ const Dashboard = () => {
 
       if (currentPortfolio) {
         const totalPortfolioValue = currentPortfolio.cash_balance + totalLongValue - totalShortValue;
-        const initialValue = 500000;
-        const profitLoss = totalPortfolioValue - initialValue;
-        const profitLossPercentage = initialValue > 0 ? (profitLoss / initialValue) * 100 : 0;
+        const profitLoss = totalPortfolioValue - STARTING_CAPITAL;
+        const profitLossPercentage = STARTING_CAPITAL > 0 ? (profitLoss / STARTING_CAPITAL) * 100 : 0;
 
         await supabase
           .from('portfolios')
@@ -393,7 +400,7 @@ const Dashboard = () => {
           .eq('user_id', session.user.id);
       }
 
-      console.log('Portfolio recalculated with correct P&L values');
+      // Portfolio recalculated
     } catch (error) {
       console.error('Error recalculating portfolio:', error);
     }
@@ -406,15 +413,27 @@ const Dashboard = () => {
 
 
   const handlePlaceOrder = async (isBuy: boolean) => {
+    const now = Date.now();
+    if (now - lastOrderTimeRef.current < 2000) {
+      toast.error("Please wait 2 seconds between orders");
+      return;
+    }
+    lastOrderTimeRef.current = now;
+
     if (!selectedAsset || !quantity) {
       toast.error("Please select an asset and enter quantity");
       return;
     }
 
     // Additional validation
-    const qty = parseFloat(quantity);
+    const qty = parseInt(quantity, 10);
     if (isNaN(qty) || qty <= 0) {
       toast.error("Please enter a valid quantity");
+      return;
+    }
+
+    if (!Number.isInteger(qty) || qty < 1) {
+      toast.error("Quantity must be a whole number (minimum 1)");
       return;
     }
 
@@ -443,26 +462,8 @@ const Dashboard = () => {
       const asset = assets.find(a => a.id === selectedAsset);
       if (!asset) throw new Error("Asset not found");
 
-      const qty = parseFloat(quantity);
       const price = orderType === "limit" && limitPrice ? parseFloat(limitPrice) : null;
       const stopPrice = orderType === "stop_loss" && limitPrice ? parseFloat(limitPrice) : null;
-
-      // Collect debug information
-      const debugData = {
-        userId: session.user.id,
-        assetId: selectedAsset,
-        asset: asset,
-        orderType,
-        quantity: qty,
-        price,
-        stopPrice,
-        isBuy,
-        isShortSell,
-        competitionStatus,
-        timestamp: new Date().toISOString()
-      };
-      setDebugInfo(debugData);
-      console.log('Order debug info:', debugData);
 
       // First, create order in pending status
       let orderData: { id: string } | null = null;
@@ -539,17 +540,6 @@ const Dashboard = () => {
       toast.success(`Order placed! Processing ${isBuy ? "buy" : "sell"} order...`);
 
       // Execute order using the order execution engine
-      console.log('About to execute order with params:', {
-        userId: session.user.id,
-        assetId: selectedAsset,
-        orderType,
-        quantity: qty,
-        price,
-        stopPrice,
-        isBuy,
-        isShortSell
-      });
-      
       let result;
       try {
         // Add timeout to prevent hanging
@@ -569,7 +559,6 @@ const Dashboard = () => {
         );
         
         result = await Promise.race([executionPromise, timeoutPromise]);
-        console.log('Order execution result:', result);
       } catch (executionError) {
         console.error('Order execution threw an error:', executionError);
         result = {
@@ -604,18 +593,6 @@ const Dashboard = () => {
           })
           .eq("id", orderData.id);
 
-        console.error('Order execution failed:', result.message);
-        console.error('Order execution details:', {
-          userId: session.user.id,
-          assetId: selectedAsset,
-          orderType,
-          quantity: qty,
-          price,
-          stopPrice,
-          isBuy,
-          isShortSell,
-          result
-        });
         toast.error(`Order failed: ${result.message}`);
       }
     } catch (error: unknown) {
@@ -631,200 +608,243 @@ const Dashboard = () => {
     return ((current - previous) / previous) * 100;
   };
 
+  const activePortfolio = calculatedPortfolio || portfolio;
+  const selectedAssetData = assets.find(a => a.id === selectedAsset);
+  const estimatedCost = selectedAssetData && quantity ? selectedAssetData.current_price * parseInt(quantity || "0", 10) : 0;
+  const transactionFee = estimatedCost * 0.001; // 0.1% fee estimate
+
+  const getRelativeTime = (dateString: string) => {
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return "just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+  };
+
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 animate-fade-in">
         <TradingHaltBanner />
-        
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-              <Activity className="h-8 w-8 text-primary" />
-              Trading Dashboard
-            </h1>
-            <p className="text-muted-foreground">Monitor markets and execute trades in real-time</p>
+
+        {/* Portfolio Header - Full Width Glass Card with Stats */}
+        <div className="glass-card stat-card p-6">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h1 className="text-2xl font-bold text-gradient-primary flex items-center gap-2.5">
+                <Activity className="h-7 w-7 text-primary" />
+                Trading Dashboard
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">Real-time portfolio overview</p>
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-muted-foreground">Live</span>
+              <div className="h-2 w-2 rounded-full bg-profit pulse-live"></div>
+            </div>
           </div>
-          <div className="flex items-center gap-2 text-sm">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <span className="text-muted-foreground">Live Market Data</span>
-            <div className="h-2 w-2 rounded-full bg-profit pulse-live"></div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Total Value */}
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/20 border border-border/30">
+              <div className="rounded-lg p-2 bg-primary/10">
+                <PieChart className="h-4 w-4 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Value</p>
+                <div className="text-xl font-bold mt-0.5">
+                  <AnimatedCounter value={activePortfolio?.total_value ?? 0} prefix="₹" decimals={2} />
+                </div>
+              </div>
+            </div>
+
+            {/* Cash Balance */}
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/20 border border-border/30">
+              <div className="rounded-lg p-2 bg-primary/10">
+                <Wallet className="h-4 w-4 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Cash Balance</p>
+                <div className="text-xl font-bold mt-0.5">
+                  <AnimatedCounter value={activePortfolio?.cash_balance ?? 0} prefix="₹" decimals={2} />
+                </div>
+              </div>
+            </div>
+
+            {/* P&L */}
+            <div className={`flex items-start gap-3 p-3 rounded-lg border border-border/30 ${activePortfolio && activePortfolio.profit_loss >= 0 ? 'bg-profit/5' : 'bg-loss/5'}`}>
+              <div className={`rounded-lg p-2 ${activePortfolio && activePortfolio.profit_loss >= 0 ? 'bg-profit/10' : 'bg-loss/10'}`}>
+                {activePortfolio && activePortfolio.profit_loss >= 0 ? (
+                  <TrendingUp className="h-4 w-4 text-profit" />
+                ) : (
+                  <TrendingDown className="h-4 w-4 text-loss" />
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                  Profit / Loss
+                  {calculatedPortfolio && <span className="h-1.5 w-1.5 rounded-full bg-profit inline-block pulse-live"></span>}
+                </p>
+                <div className={`text-xl font-bold mt-0.5 ${activePortfolio && activePortfolio.profit_loss >= 0 ? 'text-profit' : 'text-loss'}`}>
+                  <AnimatedCounter value={activePortfolio?.profit_loss ?? 0} prefix="₹" decimals={2} />
+                </div>
+              </div>
+            </div>
+
+            {/* Return % */}
+            <div className={`flex items-start gap-3 p-3 rounded-lg border border-border/30 ${activePortfolio && activePortfolio.profit_loss_percentage >= 0 ? 'bg-profit/5' : 'bg-loss/5'}`}>
+              <div className={`rounded-lg p-2 ${activePortfolio && activePortfolio.profit_loss_percentage >= 0 ? 'bg-profit/10' : 'bg-loss/10'}`}>
+                {activePortfolio && activePortfolio.profit_loss_percentage >= 0 ? (
+                  <ArrowUpRight className="h-4 w-4 text-profit" />
+                ) : (
+                  <ArrowDownRight className="h-4 w-4 text-loss" />
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                  Return %
+                  {calculatedPortfolio && <span className="h-1.5 w-1.5 rounded-full bg-profit inline-block pulse-live"></span>}
+                </p>
+                <div className={`text-xl font-bold mt-0.5 ${activePortfolio && activePortfolio.profit_loss_percentage >= 0 ? 'text-profit' : 'text-loss'}`}>
+                  <AnimatedCounter value={activePortfolio?.profit_loss_percentage ?? 0} suffix="%" decimals={2} />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Competition Status Banner */}
         {competitionStatus !== "active" && (
-          <Card className={`card-enhanced ${competitionStatus === "not_started" ? "glow-danger" : "glow-primary"}`}>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <AlertCircle className="h-5 w-5 text-warning" />
-                <div>
-                  <h3 className="font-semibold">
-                    Competition {competitionStatus === "not_started" ? "Not Started" : 
-                                competitionStatus === "paused" ? "Paused" : 
-                                competitionStatus === "completed" ? "Completed" : "Inactive"}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {competitionStatus === "not_started" ? "The competition has not been started yet. Please wait for the admin to begin." :
-                     competitionStatus === "paused" ? "The competition is currently paused. Trading is disabled." :
-                     competitionStatus === "completed" ? "The competition has ended. Thank you for participating!" :
-                     "Trading is currently disabled."}
-                  </p>
-                </div>
+          <div className="glass-card p-4">
+            <div className="flex items-center gap-3">
+              <div className={`rounded-full p-2 ${competitionStatus === "not_started" ? "bg-loss/10" : "bg-warning/10"}`}>
+                <AlertCircle className={`h-5 w-5 ${competitionStatus === "not_started" ? "text-loss" : "text-warning"}`} />
               </div>
-            </CardContent>
-          </Card>
+              <div>
+                <h3 className="font-semibold text-sm">
+                  Competition {competitionStatus === "not_started" ? "Not Started" :
+                              competitionStatus === "paused" ? "Paused" :
+                              competitionStatus === "completed" ? "Completed" : "Inactive"}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {competitionStatus === "not_started" ? "The competition has not been started yet. Please wait for the admin to begin." :
+                   competitionStatus === "paused" ? "The competition is currently paused. Trading is disabled." :
+                   competitionStatus === "completed" ? "The competition has ended. Thank you for participating!" :
+                   "Trading is currently disabled."}
+                </p>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Market Search */}
         <MarketSearch assets={assets} />
 
         {/* Collapsible Market Overview */}
-        <CollapsibleMarketOverview 
-          assets={assets} 
+        <CollapsibleMarketOverview
+          assets={assets}
           priceChanges={priceChanges}
           competitionStatus={competitionStatus}
         />
 
-        {/* Portfolio Overview */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="card-enhanced">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Value</CardTitle>
-              <PieChart className="h-4 w-4 text-primary pulse-live" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold animate-fade-in">₹{(calculatedPortfolio || portfolio)?.total_value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="card-enhanced">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Cash Balance</CardTitle>
-              <Wallet className="h-4 w-4 text-primary pulse-live" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold animate-fade-in">₹{(calculatedPortfolio || portfolio)?.cash_balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
-            </CardContent>
-          </Card>
-
-          <Card className={`card-enhanced ${(calculatedPortfolio || portfolio) && (calculatedPortfolio || portfolio)!.profit_loss >= 0 ? 'glow-success' : 'glow-danger'}`}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                Profit/Loss
-                {calculatedPortfolio && <div className="h-1.5 w-1.5 rounded-full bg-green-500 pulse-live"></div>}
-              </CardTitle>
-              {(calculatedPortfolio || portfolio) && (calculatedPortfolio || portfolio)!.profit_loss >= 0 ? (
-                <TrendingUp className="h-4 w-4 text-profit pulse-live" />
-              ) : (
-                <TrendingDown className="h-4 w-4 text-loss pulse-live" />
-              )}
-            </CardHeader>
-            <CardContent>
-              <div className={`text-2xl font-bold animate-fade-in ${(calculatedPortfolio || portfolio) && (calculatedPortfolio || portfolio)!.profit_loss >= 0 ? 'text-profit' : 'text-loss'}`}>
-                ₹{(calculatedPortfolio || portfolio)?.profit_loss.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className={`card-enhanced ${(calculatedPortfolio || portfolio) && (calculatedPortfolio || portfolio)!.profit_loss_percentage >= 0 ? 'glow-success' : 'glow-danger'}`}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                Return %
-                {calculatedPortfolio && <div className="h-1.5 w-1.5 rounded-full bg-green-500 pulse-live"></div>}
-              </CardTitle>
-              {(calculatedPortfolio || portfolio) && (calculatedPortfolio || portfolio)!.profit_loss_percentage >= 0 ? (
-                <ArrowUpRight className="h-4 w-4 text-profit pulse-live" />
-              ) : (
-                <ArrowDownRight className="h-4 w-4 text-loss pulse-live" />
-              )}
-            </CardHeader>
-            <CardContent>
-              <div className={`text-2xl font-bold animate-fade-in ${(calculatedPortfolio || portfolio) && (calculatedPortfolio || portfolio)!.profit_loss_percentage >= 0 ? 'text-profit' : 'text-loss'}`}>
-                {(calculatedPortfolio || portfolio)?.profit_loss_percentage.toFixed(2)}%
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Trading & News Section */}
-        <div className="grid gap-6 lg:grid-cols-4">
+        {/* Main Grid: Trading Panel (2 cols) + News (1 col) */}
+        <div className="grid gap-6 lg:grid-cols-3">
           {/* Trading Panel */}
-          <Card className="lg:col-span-2 card-enhanced glow-primary">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-primary" />
-                Place Order
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <div className="lg:col-span-2 glass-card p-0 overflow-hidden">
+            <div className="p-5 border-b border-border/30">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <ShoppingCart className="h-5 w-5 text-primary" />
+                <span className="text-gradient-primary">Place Order</span>
+              </h2>
+            </div>
+            <div className="p-5 space-y-5">
+              {/* Asset Selector */}
               <div className="space-y-2">
-                <Label>Select Asset</Label>
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Select Asset</Label>
                 <Select value={selectedAsset} onValueChange={setSelectedAsset}>
-                  <SelectTrigger className="input-enhanced">
-                    <SelectValue placeholder="Choose an asset" />
+                  <SelectTrigger className="input-enhanced h-11">
+                    <SelectValue placeholder="Choose an asset to trade" />
                   </SelectTrigger>
                   <SelectContent>
                     {assets.map((asset) => (
                       <SelectItem key={asset.id} value={asset.id}>
-                        {asset.symbol} - ₹{asset.current_price.toFixed(2)}
+                        <span className="font-medium">{asset.symbol}</span>
+                        <span className="text-muted-foreground ml-2">- ₹{asset.current_price.toFixed(2)}</span>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Order Type</Label>
-                  <Select value={orderType} onValueChange={setOrderType}>
-                    <SelectTrigger className="input-enhanced">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="market">Market</SelectItem>
-                      <SelectItem value="limit">Limit</SelectItem>
-                      <SelectItem value="stop_loss">Stop Loss</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Quantity</Label>
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    value={quantity}
-                    onChange={(e) => setQuantity(e.target.value)}
-                    min="0"
-                    step="0.01"
-                    className="input-enhanced"
-                  />
+              {/* Order Type Button Group */}
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Order Type</Label>
+                <div className="flex gap-1 p-1 bg-muted/40 rounded-lg border border-border/30">
+                  {[
+                    { value: "market", label: "Market" },
+                    { value: "limit", label: "Limit" },
+                    { value: "stop_loss", label: "Stop Loss" },
+                  ].map((type) => (
+                    <button
+                      key={type.value}
+                      onClick={() => setOrderType(type.value)}
+                      className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                        orderType === type.value
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                      }`}
+                    >
+                      {type.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              {/* Short Selling Option */}
-              <div className="flex items-center space-x-2 p-3 bg-muted/50 rounded-lg border">
-                <input
-                  type="checkbox"
-                  id="shortSell"
-                  checked={isShortSell}
-                  onChange={(e) => setIsShortSell(e.target.checked)}
-                  className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+              {/* Quantity */}
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Quantity</Label>
+                <Input
+                  type="number"
+                  placeholder="Enter quantity"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  min="1"
+                  step="1"
+                  className="input-enhanced h-11"
                 />
-                <Label htmlFor="shortSell" className="text-sm font-medium cursor-pointer">
-                  Short Sell (Sell shares you don't own)
-                </Label>
+              </div>
+
+              {/* Short Sell Toggle */}
+              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/20 border border-border/30">
+                <div className="flex items-center gap-2.5">
+                  <input
+                    type="checkbox"
+                    id="shortSell"
+                    checked={isShortSell}
+                    onChange={(e) => setIsShortSell(e.target.checked)}
+                    className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                  />
+                  <Label htmlFor="shortSell" className="text-sm font-medium cursor-pointer">
+                    Short Sell
+                  </Label>
+                </div>
                 {isShortSell && (
-                  <Badge variant="destructive" className="ml-auto">
-                    Requires 25% Margin
+                  <Badge variant="destructive" className="text-xs">
+                    25% Margin Required
                   </Badge>
                 )}
               </div>
 
-              {orderType === "limit" && (
-                <div className="space-y-2">
-                  <Label>Limit Price</Label>
+              {/* Limit / Stop Price (conditional) */}
+              {(orderType === "limit" || orderType === "stop_loss") && (
+                <div className="space-y-2 animate-fade-in">
+                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    {orderType === "limit" ? "Limit Price" : "Stop Price"}
+                  </Label>
                   <Input
                     type="number"
                     placeholder="0.00"
@@ -832,139 +852,187 @@ const Dashboard = () => {
                     onChange={(e) => setLimitPrice(e.target.value)}
                     min="0"
                     step="0.01"
-                    className="input-enhanced"
+                    className="input-enhanced h-11"
                   />
                 </div>
               )}
 
-              <div className="flex gap-2">
-                <Button 
-                  className="flex-1 btn-buy" 
+              {/* Order Preview */}
+              {selectedAssetData && quantity && parseInt(quantity) > 0 && (
+                <div className="rounded-lg border border-border/30 bg-muted/10 p-4 space-y-2.5 animate-fade-in">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Order Preview</h4>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Asset Price</span>
+                    <span className="font-medium">₹{selectedAssetData.current_price.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Estimated Cost</span>
+                    <span className="font-medium">₹{estimatedCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Transaction Fee (est.)</span>
+                    <span className="font-medium text-muted-foreground">₹{transactionFee.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="border-t border-border/30 pt-2 mt-2 flex justify-between text-sm">
+                    <span className="font-semibold">Total (est.)</span>
+                    <span className="font-bold">₹{(estimatedCost + transactionFee).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Buy / Sell Buttons */}
+              <div className="flex gap-3 pt-1">
+                <Button
+                  className="flex-1 btn-buy h-11 text-base"
                   onClick={() => handlePlaceOrder(true)}
                   disabled={loading || competitionStatus !== "active"}
                 >
                   {loading ? "Processing..." : "Buy"}
                 </Button>
-                <Button 
-                  className="flex-1 btn-sell" 
+                <Button
+                  className="flex-1 btn-sell h-11 text-base"
                   onClick={() => handlePlaceOrder(false)}
                   disabled={loading || competitionStatus !== "active"}
                 >
                   {loading ? "Processing..." : "Sell"}
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Trading Queue */}
-          {session?.user?.id && <TradingQueue userId={session.user.id} />}
+            </div>
+          </div>
 
           {/* News Feed */}
-          <Card className="card-enhanced">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-primary" />
-                Market News
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+          <div className="glass-card p-0 overflow-hidden">
+            <div className="p-5 border-b border-border/30">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Newspaper className="h-5 w-5 text-primary" />
+                <span className="text-gradient-primary">Market News</span>
+              </h2>
+            </div>
+            <div className="p-4 space-y-3 max-h-[600px] overflow-y-auto">
               {news.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No news updates yet</p>
+                <EmptyState
+                  icon={Newspaper}
+                  title="No News Yet"
+                  description="Market news and updates will appear here when available."
+                />
               ) : (
                 news.map((item, index) => (
-                  <div key={item.id} className={`border-b border-border pb-3 last:border-0 animate-fade-in`} style={{ animationDelay: `${index * 0.1}s` }}>
-                    <div className="flex items-start gap-2">
-                      <AlertCircle className="h-4 w-4 text-primary mt-1 pulse-live" />
-                      <div>
-                        <h4 className="font-medium text-sm">{item.title}</h4>
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.content}</p>
-                        {item.category && (
-                          <Badge variant="secondary" className="mt-2 text-xs">{item.category}</Badge>
-                        )}
-                      </div>
+                  <div
+                    key={item.id}
+                    className="p-3 rounded-lg bg-muted/15 border border-border/20 hover:border-primary/20 transition-all duration-200 animate-fade-in"
+                    style={{ animationDelay: `${index * 0.08}s` }}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                      <h4 className="font-medium text-sm leading-snug">{item.title}</h4>
+                      <span className="text-[10px] text-muted-foreground whitespace-nowrap mt-0.5">
+                        {getRelativeTime(item.created_at)}
+                      </span>
                     </div>
+                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{item.content}</p>
+                    {item.category && (
+                      <Badge variant="secondary" className="mt-2 text-[10px] px-2 py-0">
+                        {item.category}
+                      </Badge>
+                    )}
                   </div>
                 ))
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
 
-        {/* Positions & Recent Orders */}
+        {/* Trading Queue */}
+        {session?.user?.id && <TradingQueue userId={session.user.id} />}
+
+        {/* Positions, Orders & Margin Tabs */}
         <Tabs defaultValue="positions" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3 card-enhanced">
-            <TabsTrigger value="positions">Your Positions</TabsTrigger>
-            <TabsTrigger value="orders">Recent Orders</TabsTrigger>
-            <TabsTrigger value="margin">Margin Status</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 glass-card h-11">
+            <TabsTrigger value="positions" className="text-sm">Positions</TabsTrigger>
+            <TabsTrigger value="orders" className="text-sm">Recent Orders</TabsTrigger>
+            <TabsTrigger value="margin" className="text-sm">Margin Status</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="positions">
-            <Card className="card-enhanced">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <PieChart className="h-5 w-5 text-primary" />
-              Your Positions
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {positions.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">No positions yet. Start trading!</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="text-left py-3 px-2 text-sm font-medium">Symbol</th>
-                      <th className="text-right py-3 px-2 text-sm font-medium">Quantity</th>
-                      <th className="text-right py-3 px-2 text-sm font-medium">Avg Price</th>
-                      <th className="text-right py-3 px-2 text-sm font-medium">Current</th>
-                      <th className="text-center py-3 px-2 text-sm font-medium">Type</th>
-                      <th className="text-right py-3 px-2 text-sm font-medium">P/L</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {positions.map((position) => (
-                      <tr key={position.id} className="border-b border-border last:border-0">
-                        <td className="py-3 px-2">
-                          <div>
-                            <p className="font-medium">{position.assets.symbol}</p>
-                            <p className="text-xs text-muted-foreground">{position.assets.name}</p>
-                          </div>
-                        </td>
-                        <td className="text-right py-3 px-2">
-                          {position.is_short ? '-' : ''}{position.quantity}
-                        </td>
-                        <td className="text-right py-3 px-2">₹{position.average_price.toFixed(2)}</td>
-                        <td className="text-right py-3 px-2">₹{position.assets.current_price.toFixed(2)}</td>
-                        <td className="text-center py-3 px-2">
-                          <Badge variant={position.is_short ? "destructive" : "default"}>
-                            {position.is_short ? "SHORT" : "LONG"}
-                          </Badge>
-                        </td>
-                        <td className={`text-right py-3 px-2 font-medium ${position.profit_loss > 0 ? 'text-profit' : position.profit_loss < 0 ? 'text-loss' : 'text-muted-foreground'}`}>
-                          ₹{position.profit_loss.toFixed(2)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <div className="glass-card p-0 overflow-hidden">
+              <div className="p-5 border-b border-border/30">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                  <span className="text-gradient-primary">Your Positions</span>
+                </h2>
               </div>
-            )}
-          </CardContent>
-        </Card>
+              <div className="p-0">
+                {positions.length === 0 ? (
+                  <EmptyState
+                    icon={PieChart}
+                    title="No Positions"
+                    description="You don't have any open positions yet. Start trading to see them here."
+                  />
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full table-premium">
+                      <thead>
+                        <tr>
+                          <th className="text-left">Symbol</th>
+                          <th className="text-right">Qty</th>
+                          <th className="text-right">Avg Price</th>
+                          <th className="text-right">Current</th>
+                          <th className="text-center">Type</th>
+                          <th className="text-right">P&L</th>
+                          <th className="text-right">P&L %</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {positions.map((position) => {
+                          const plPercent = position.average_price > 0
+                            ? ((position.profit_loss / (position.average_price * position.quantity)) * 100)
+                            : 0;
+                          return (
+                            <tr key={position.id}>
+                              <td>
+                                <div>
+                                  <p className="font-semibold text-foreground">{position.assets.symbol}</p>
+                                  <p className="text-xs text-muted-foreground">{position.assets.name}</p>
+                                </div>
+                              </td>
+                              <td className="text-right font-medium tabular-nums">
+                                {position.is_short ? '-' : ''}{position.quantity}
+                              </td>
+                              <td className="text-right tabular-nums">₹{position.average_price.toFixed(2)}</td>
+                              <td className="text-right tabular-nums">₹{position.assets.current_price.toFixed(2)}</td>
+                              <td className="text-center">
+                                <Badge variant={position.is_short ? "destructive" : "default"} className="text-[10px] px-2">
+                                  {position.is_short ? "SHORT" : "LONG"}
+                                </Badge>
+                              </td>
+                              <td className={`text-right font-semibold tabular-nums ${position.profit_loss > 0 ? 'text-profit' : position.profit_loss < 0 ? 'text-loss' : 'text-muted-foreground'}`}>
+                                ₹{position.profit_loss.toFixed(2)}
+                              </td>
+                              <td className={`text-right font-medium tabular-nums ${plPercent > 0 ? 'text-profit' : plPercent < 0 ? 'text-loss' : 'text-muted-foreground'}`}>
+                                {plPercent >= 0 ? '+' : ''}{plPercent.toFixed(2)}%
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
           </TabsContent>
-          
+
           <TabsContent value="orders">
-            <Card className="card-enhanced">
-              <CardHeader>
-                <CardTitle>Recent Trade Executions</CardTitle>
-              </CardHeader>
-              <CardContent>
+            <div className="glass-card p-0 overflow-hidden">
+              <div className="p-5 border-b border-border/30">
+                <h2 className="text-lg font-semibold">Recent Trade Executions</h2>
+              </div>
+              <div className="p-5">
                 <p className="text-sm text-muted-foreground text-center py-8">
-                  View your complete order history in the <a href="/history" className="text-primary hover:underline">Transaction History</a> page
+                  View your complete order history in the{" "}
+                  <a href="/history" className="text-primary hover:underline font-medium">Transaction History</a> page
                 </p>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="margin">

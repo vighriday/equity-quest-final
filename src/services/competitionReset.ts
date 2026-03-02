@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { STARTING_CAPITAL } from '@/lib/constants';
 
 export interface ResetOptions {
   resetPortfolios: boolean;
@@ -36,7 +37,7 @@ export interface ResetResult {
 }
 
 export class CompetitionResetService {
-  private readonly defaultStartingCash = 100000; // ₹1,00,000
+  private readonly defaultStartingCash = STARTING_CAPITAL;
 
   /**
    * Perform a complete competition reset

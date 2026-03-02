@@ -23,6 +23,7 @@ export class PriceUpdateService {
   private static instance: PriceUpdateService;
   private subscriptions: Map<string, PriceUpdateSubscription> = new Map();
   private realtimeSubscription: any = null;
+  private noiseEventHandler: ((event: Event) => void) | null = null;
   private isInitialized = false;
 
   public static getInstance(): PriceUpdateService {
@@ -37,24 +38,17 @@ export class PriceUpdateService {
    */
   async initialize(): Promise<void> {
     if (this.isInitialized) {
-      console.log('Price update service is already initialized');
       return;
     }
 
     try {
-      console.log('Initializing price update service...');
-
       // Set up Supabase real-time subscription for price changes
       await this.setupRealtimeSubscription();
 
       // Set up noise service event listener
       this.setupNoiseEventListener();
 
-      // Set up window event listener for price updates
-      this.setupWindowEventListener();
-
       this.isInitialized = true;
-      console.log('✅ Price update service initialized');
 
     } catch (error) {
       console.error('Error initializing price update service:', error);
@@ -74,7 +68,6 @@ export class PriceUpdateService {
       assetIds
     });
 
-    console.log(`Price update subscription created: ${subscriptionId}`);
     return subscriptionId;
   }
 
@@ -84,7 +77,6 @@ export class PriceUpdateService {
   unsubscribe(subscriptionId: string): void {
     if (this.subscriptions.has(subscriptionId)) {
       this.subscriptions.delete(subscriptionId);
-      console.log(`Price update subscription removed: ${subscriptionId}`);
     }
   }
 
@@ -168,8 +160,6 @@ export class PriceUpdateService {
 
       this.emitPriceUpdate(priceUpdate);
 
-      console.log(`📊 ${asset.symbol}: ₹${oldPrice.toFixed(2)} → ₹${newPrice.toFixed(2)} (${changePercentage > 0 ? '+' : ''}${changePercentage.toFixed(3)}%) [${source}]`);
-
     } catch (error) {
       console.error(`Error triggering price update for asset ${assetId}:`, error);
       throw error;
@@ -208,7 +198,6 @@ export class PriceUpdateService {
         )
         .subscribe();
 
-      console.log('✅ Real-time price subscription established');
 
     } catch (error) {
       console.error('Error setting up real-time subscription:', error);
@@ -220,11 +209,14 @@ export class PriceUpdateService {
    * Sets up noise service event listener
    */
   private setupNoiseEventListener(): void {
-    // Listen for noise service events
     if (typeof window !== 'undefined') {
-      window.addEventListener('priceUpdate', (event: any) => {
+      // Remove previous listener if any
+      if (this.noiseEventHandler) {
+        window.removeEventListener('priceUpdate', this.noiseEventHandler);
+      }
+      this.noiseEventHandler = (event: any) => {
         const priceUpdate = event.detail as PriceUpdate;
-        
+
         const priceUpdateEvent: PriceUpdateEvent = {
           type: 'noise_fluctuation',
           assetId: priceUpdate.assetId,
@@ -240,19 +232,8 @@ export class PriceUpdateService {
         };
 
         this.emitPriceUpdate(priceUpdateEvent);
-      });
-    }
-  }
-
-  /**
-   * Sets up window event listener for price updates
-   */
-  private setupWindowEventListener(): void {
-    if (typeof window !== 'undefined') {
-      window.addEventListener('priceUpdate', (event: any) => {
-        // This will be handled by the noise event listener
-        // Additional window events can be handled here
-      });
+      };
+      window.addEventListener('priceUpdate', this.noiseEventHandler);
     }
   }
 
@@ -308,9 +289,7 @@ export class PriceUpdateService {
         return;
       }
 
-      // This could be used to track price history changes
-      // For now, we'll just log it
-      console.log('Price history recorded:', newData);
+      // Price history change tracked via realtime subscription
 
     } catch (error) {
       console.error('Error handling price history insert:', error);
@@ -399,11 +378,16 @@ export class PriceUpdateService {
         this.realtimeSubscription = null;
       }
 
+      // Remove noise event listener
+      if (typeof window !== 'undefined' && this.noiseEventHandler) {
+        window.removeEventListener('priceUpdate', this.noiseEventHandler);
+        this.noiseEventHandler = null;
+      }
+
       // Clear all subscriptions
       this.subscriptions.clear();
 
       this.isInitialized = false;
-      console.log('✅ Price update service cleaned up');
 
     } catch (error) {
       console.error('Error cleaning up price update service:', error);

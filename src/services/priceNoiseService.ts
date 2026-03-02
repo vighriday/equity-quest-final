@@ -29,6 +29,7 @@ export class PriceNoiseService {
   };
   
   private intervals: Map<string, NodeJS.Timeout> = new Map();
+  private restartTimeout: NodeJS.Timeout | null = null;
   private isRunning = false;
   private assets: Array<{ id: string; symbol: string; current_price: number }> = [];
 
@@ -44,7 +45,6 @@ export class PriceNoiseService {
    */
   async startNoiseFluctuation(): Promise<void> {
     if (this.isRunning) {
-      console.log('Price noise service is already running');
       return;
     }
 
@@ -80,12 +80,15 @@ export class PriceNoiseService {
    */
   stopNoiseFluctuation(): void {
     if (!this.isRunning) {
-      console.log('Price noise service is not running');
       return;
     }
 
-    // Stopping price noise fluctuation system
-    
+    // Clear restart timeout if pending
+    if (this.restartTimeout) {
+      clearTimeout(this.restartTimeout);
+      this.restartTimeout = null;
+    }
+
     // Clear all intervals and timeouts
     this.intervals.forEach((timeoutId, assetId) => {
       clearTimeout(timeoutId);
@@ -94,8 +97,6 @@ export class PriceNoiseService {
 
     this.isRunning = false;
     this.noiseConfig.isEnabled = false;
-    
-    // Price noise fluctuation stopped
   }
 
   /**
@@ -148,16 +149,20 @@ export class PriceNoiseService {
    */
   private startAssetNoise(asset: { id: string; symbol: string; current_price: number }): void {
     const scheduleNextFluctuation = () => {
+      if (!this.isRunning) return; // Guard against scheduling after stop
+      // Clear existing timeout for this asset before scheduling new one
+      const existingTimeout = this.intervals.get(asset.id);
+      if (existingTimeout) clearTimeout(existingTimeout);
       // Generate random interval between min and max
       const interval = this.getRandomInterval();
-      
+
       const timeoutId = setTimeout(async () => {
         try {
           await this.applyNoiseFluctuation(asset);
         } catch (error) {
           console.error(`Error applying noise fluctuation for ${asset.symbol}:`, error);
         }
-        
+
         // Schedule next fluctuation
         scheduleNextFluctuation();
       }, interval);
@@ -174,7 +179,6 @@ export class PriceNoiseService {
    */
   private async applyNoiseFluctuation(asset: { id: string; symbol: string; current_price: number }): Promise<void> {
     if (!this.noiseConfig.isEnabled || !this.isRunning) {
-      console.log(`Noise fluctuation skipped for ${asset.symbol}: service not enabled or not running`);
       return;
     }
 
@@ -347,7 +351,6 @@ export class PriceNoiseService {
     // Remove from local cache
     this.assets = this.assets.filter(asset => asset.id !== assetId);
     
-    console.log(`Removed asset ${assetId} from noise fluctuation system`);
   }
 
   /**
@@ -376,7 +379,7 @@ export class PriceNoiseService {
       if (this.intervals.size < this.assets.length) {
         console.warn(`Noise service has fewer active intervals (${this.intervals.size}) than assets (${this.assets.length}). Restarting...`);
         this.stopNoiseFluctuation();
-        setTimeout(() => {
+        this.restartTimeout = setTimeout(() => {
           this.startNoiseFluctuation();
         }, 1000);
       }

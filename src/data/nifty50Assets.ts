@@ -88,8 +88,8 @@ export const nifty50Assets = [
   { symbol: "SILVER", name: "Silver", sector: "Commodities", yfinance_ticker: "SI=F" },
   { symbol: "CRUDE", name: "Crude Oil", sector: "Commodities", yfinance_ticker: "CL=F" },
   { symbol: "COPPER", name: "Copper", sector: "Commodities", yfinance_ticker: "HG=F" },
-  { symbol: "STEEL", name: "Steel", sector: "Commodities", yfinance_ticker: "HG=F" },
-  { symbol: "ALUMINUM", name: "Aluminum", sector: "Commodities", yfinance_ticker: "HG=F" },
+  { symbol: "STEEL", name: "Steel", sector: "Commodities", yfinance_ticker: "SLX" },
+  { symbol: "ALUMINUM", name: "Aluminum", sector: "Commodities", yfinance_ticker: "ALI=F" },
 
   // Index
   { symbol: "NIFTY", name: "Nifty 50", sector: "Index", yfinance_ticker: "^NSEI" }

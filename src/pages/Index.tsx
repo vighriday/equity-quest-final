@@ -1,272 +1,585 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { motion } from "framer-motion";
-import { ArrowRight, BrainCircuit, ShieldCheck, Trophy, Layers, LineChart, TrendingUp, Newspaper } from "lucide-react";
+import {
+  ArrowRight,
+  TrendingUp,
+  ArrowDownRight,
+  Zap,
+  Users,
+  Shield,
+  Trophy,
+  Play,
+  ChevronDown,
+  BarChart3,
+  Target,
+  Flame,
+} from "lucide-react";
 
-// --- Animated Stock Ticker (Task 1 Update) ---
-const StockTicker = () => {
-  // Added more stocks to make the ticker feel more populated
-  const stocks = [
-    { symbol: "NIFTY", price: "23,845.75", change: "+0.87%" },
-    { symbol: "RELIANCE", price: "2,745.60", change: "-0.42%" },
-    { symbol: "TCS", price: "3,815.20", change: "+1.12%" },
-    { symbol: "HDFC BANK", price: "1,715.30", change: "+0.23%" },
-    { symbol: "INFY", price: "1,625.80", change: "-0.15%" },
-    { symbol: "ICICI BANK", price: "1,150.90", change: "+1.55%" },
-    { symbol: "SBIN", price: "725.40", change: "+0.78%" },
-    { symbol: "HINDUNILVR", price: "2,550.00", change: "-0.05%" },
-    { symbol: "BHARTIARTL", price: "1,050.25", change: "+2.10%" },
-    { symbol: "ITC", price: "435.80", change: "-0.30%" },
-  ];
+/* ------------------------------------------------------------------ */
+/*  Types                                                              */
+/* ------------------------------------------------------------------ */
+interface TickerAsset {
+  symbol: string;
+  current_price: number;
+  previous_close: number;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Live Ticker — fetches real prices from Supabase                    */
+/* ------------------------------------------------------------------ */
+const LiveTicker = () => {
+  const [assets, setAssets] = useState<TickerAsset[]>([]);
+
+  useEffect(() => {
+    const fetchAssets = async () => {
+      const { data, error } = await supabase
+        .from("assets")
+        .select("symbol, current_price, previous_close")
+        .order("symbol", { ascending: true });
+
+      if (!error && data && data.length > 0) {
+        setAssets(data as TickerAsset[]);
+      } else {
+        // Fallback static data when DB is empty or unavailable
+        setAssets([
+          { symbol: "NIFTY 50", current_price: 23845.75, previous_close: 23640.0 },
+          { symbol: "RELIANCE", current_price: 2745.6, previous_close: 2757.2 },
+          { symbol: "TCS", current_price: 3815.2, previous_close: 3772.5 },
+          { symbol: "HDFCBANK", current_price: 1715.3, previous_close: 1711.4 },
+          { symbol: "INFY", current_price: 1625.8, previous_close: 1628.2 },
+          { symbol: "ICICIBANK", current_price: 1150.9, previous_close: 1133.2 },
+          { symbol: "SBIN", current_price: 725.4, previous_close: 719.8 },
+          { symbol: "HINDUNILVR", current_price: 2550.0, previous_close: 2551.3 },
+          { symbol: "BHARTIARTL", current_price: 1050.25, previous_close: 1028.5 },
+          { symbol: "ITC", current_price: 435.8, previous_close: 437.1 },
+          { symbol: "KOTAKBANK", current_price: 1782.45, previous_close: 1770.0 },
+          { symbol: "LT", current_price: 3420.1, previous_close: 3445.6 },
+        ]);
+      }
+    };
+    fetchAssets();
+  }, []);
+
+  if (assets.length === 0) return null;
+
+  // Double the items so the scroll loops seamlessly
+  const doubled = [...assets, ...assets];
 
   return (
-    // Changed `absolute` to `fixed` to make the ticker stick to the bottom during scroll
-    <div className="fixed bottom-0 left-0 right-0 overflow-hidden border-t border-white/10 bg-black/40 backdrop-blur-sm z-20">
-      <motion.div
-        animate={{ x: ["0%", "-100%"] }}
-        // Increased duration for a smoother scroll with more items
-        transition={{ duration: 35, repeat: Infinity, ease: "linear" }}
-        className="flex gap-12 py-3 px-6 whitespace-nowrap text-sm text-neutral-300"
-      >
-        {[...stocks, ...stocks].map((s, i) => (
-          <div key={i} className="flex gap-3 items-center">
-            <span className="font-semibold text-white/90">{s.symbol}</span>
-            <span>{s.price}</span>
-            <span className={`${s.change.startsWith("+") ? "text-green-400" : "text-red-400"}`}>
-              {s.change}
-            </span>
-          </div>
-        ))}
-      </motion.div>
+    <div className="w-full border-y border-white/[0.06] bg-black/40 backdrop-blur-md">
+      <div className="ticker-strip py-3">
+        <div className="ticker-scroll">
+          {doubled.map((a, i) => {
+            const change = a.previous_close
+              ? ((a.current_price - a.previous_close) / a.previous_close) * 100
+              : 0;
+            const isUp = change >= 0;
+            return (
+              <span key={i} className="inline-flex items-center gap-2 mx-6 text-sm">
+                <span className="font-semibold text-white/90 tracking-wide">{a.symbol}</span>
+                <span className="text-muted-foreground">
+                  {a.current_price.toLocaleString("en-IN", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </span>
+                <span className={isUp ? "text-profit font-medium" : "text-loss font-medium"}>
+                  {isUp ? "+" : ""}
+                  {change.toFixed(2)}%
+                </span>
+              </span>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 };
 
-// --- Background SVG chart ---
-const HeroBackgroundChart = () => (
-  <div className="absolute inset-0 z-0 opacity-15">
-    <svg width="100%" height="100%" viewBox="0 0 1440 800" preserveAspectRatio="xMidYMid slice" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path
-        d="M-28.5 492.833C100.167 404.167 334.3 260.5 504 363C673.7 465.5 726.5 639.5 901.5 650C1076.5 660.5 1205 492.833 1302 429.5C1399 366.167 1494 341.333 1539 332.5"
-        stroke="url(#paint0_linear_10_2)"
-        strokeWidth="8"
-      />
+/* ------------------------------------------------------------------ */
+/*  Hero Chart — lightweight SVG candlestick / line visualization      */
+/* ------------------------------------------------------------------ */
+const HeroChart = () => (
+  <div className="relative w-full h-full min-h-[340px] flex items-center justify-center">
+    {/* Glow backdrop */}
+    <div className="absolute inset-0 bg-primary/[0.04] rounded-3xl blur-3xl" />
+
+    <svg
+      viewBox="0 0 480 280"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="w-full h-auto max-w-[480px] drop-shadow-2xl"
+    >
+      {/* Grid lines */}
+      {[60, 110, 160, 210].map((y) => (
+        <line
+          key={y}
+          x1="30"
+          y1={y}
+          x2="460"
+          y2={y}
+          stroke="hsl(225 18% 20%)"
+          strokeWidth="0.5"
+          strokeDasharray="4 4"
+        />
+      ))}
+
+      {/* Area fill under the line */}
       <defs>
-        <linearGradient id="paint0_linear_10_2" x1="504" y1="233" x2="1076.5" y2="799.5" gradientUnits="userSpaceOnUse">
-          <stop stopColor="hsl(var(--primary))" />
-          <stop offset="1" stopColor="hsl(var(--primary))" stopOpacity="0" />
+        <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="hsl(217 100% 62%)" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="hsl(217 100% 62%)" stopOpacity="0" />
+        </linearGradient>
+        <linearGradient id="lineGrad" x1="30" y1="0" x2="460" y2="0" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="hsl(240 80% 65%)" />
+          <stop offset="50%" stopColor="hsl(217 100% 62%)" />
+          <stop offset="100%" stopColor="hsl(160 84% 44%)" />
         </linearGradient>
       </defs>
+
+      <path
+        d="M30 200 Q60 190 90 185 T150 160 T210 170 T250 120 T300 130 T340 90 T380 100 T420 60 L460 50 L460 260 L30 260 Z"
+        fill="url(#areaGrad)"
+      />
+
+      {/* Main price line */}
+      <path
+        d="M30 200 Q60 190 90 185 T150 160 T210 170 T250 120 T300 130 T340 90 T380 100 T420 60 L460 50"
+        stroke="url(#lineGrad)"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        fill="none"
+      />
+
+      {/* Candlesticks */}
+      {[
+        { x: 70, o: 188, c: 180, h: 175, l: 195, up: true },
+        { x: 110, o: 172, c: 165, h: 160, l: 178, up: true },
+        { x: 150, o: 160, c: 168, h: 155, l: 172, up: false },
+        { x: 190, o: 165, c: 155, h: 148, l: 170, up: true },
+        { x: 230, o: 145, c: 130, h: 125, l: 150, up: true },
+        { x: 270, o: 135, c: 140, h: 128, l: 145, up: false },
+        { x: 310, o: 125, c: 105, h: 98, l: 130, up: true },
+        { x: 350, o: 100, c: 108, h: 92, l: 112, up: false },
+        { x: 390, o: 95, c: 75, h: 68, l: 100, up: true },
+        { x: 430, o: 70, c: 55, h: 48, l: 78, up: true },
+      ].map((c, i) => (
+        <g key={i} opacity={0.6}>
+          {/* Wick */}
+          <line
+            x1={c.x}
+            y1={c.h}
+            x2={c.x}
+            y2={c.l}
+            stroke={c.up ? "hsl(160 84% 44%)" : "hsl(4 90% 58%)"}
+            strokeWidth="1"
+          />
+          {/* Body */}
+          <rect
+            x={c.x - 4}
+            y={Math.min(c.o, c.c)}
+            width="8"
+            height={Math.max(Math.abs(c.o - c.c), 2)}
+            rx="1"
+            fill={c.up ? "hsl(160 84% 44%)" : "hsl(4 90% 58%)"}
+          />
+        </g>
+      ))}
+
+      {/* Current price indicator */}
+      <circle cx="460" cy="50" r="4" fill="hsl(160 84% 44%)" className="animate-pulse-live" />
+      <line
+        x1="30"
+        y1="50"
+        x2="460"
+        y2="50"
+        stroke="hsl(160 84% 44%)"
+        strokeWidth="0.5"
+        strokeDasharray="3 3"
+        opacity="0.5"
+      />
+
+      {/* Price label */}
+      <rect x="390" y="30" width="68" height="18" rx="4" fill="hsl(160 84% 44% / 0.15)" />
+      <text x="424" y="43" textAnchor="middle" fill="hsl(160 84% 44%)" fontSize="10" fontWeight="600">
+        +12.4%
+      </text>
     </svg>
   </div>
 );
 
-const FeatureCard = ({ icon, title, text, delay }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 30 }}
-    whileInView={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.6, delay, ease: "easeOut" }}
-    viewport={{ once: true }}
-    className="relative p-8 overflow-hidden bg-white/5 border border-white/10 rounded-2xl backdrop-blur-xl"
+/* ------------------------------------------------------------------ */
+/*  Feature Card                                                       */
+/* ------------------------------------------------------------------ */
+interface FeatureCardProps {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  color: string;
+  delay: number;
+}
+
+const FeatureCard = ({ icon, title, description, color, delay }: FeatureCardProps) => (
+  <div
+    className="glass-card p-7 group animate-slide-up"
+    style={{ animationDelay: `${delay}ms`, animationFillMode: "both" }}
   >
-    <div className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/20 blur-3xl rounded-full"></div>
-    <div className="relative z-10">
-      <div className="flex items-center justify-center w-12 h-12 mb-6 bg-gradient-to-br from-primary/30 to-primary/20 rounded-xl">
-        {icon}
-      </div>
-      <h3 className="text-xl font-bold text-neutral-50 mb-2">{title}</h3>
-      <p className="text-neutral-400 leading-relaxed">{text}</p>
+    <div
+      className="flex items-center justify-center w-12 h-12 rounded-xl mb-5 transition-transform duration-300 group-hover:scale-110"
+      style={{ background: `${color}20` }}
+    >
+      <div style={{ color }}>{icon}</div>
     </div>
-  </motion.div>
+    <h3 className="text-lg font-bold text-foreground mb-2">{title}</h3>
+    <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
+  </div>
 );
 
+/* ------------------------------------------------------------------ */
+/*  Step Card (How It Works)                                           */
+/* ------------------------------------------------------------------ */
+interface StepCardProps {
+  step: number;
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  delay: number;
+}
+
+const StepCard = ({ step, title, description, icon, delay }: StepCardProps) => (
+  <div
+    className="relative flex flex-col items-center text-center animate-slide-up"
+    style={{ animationDelay: `${delay}ms`, animationFillMode: "both" }}
+  >
+    {/* Numbered circle */}
+    <div className="relative mb-6">
+      <div className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-black text-primary-foreground btn-primary shadow-lg">
+        {step}
+      </div>
+      <div className="absolute -inset-2 rounded-full border border-primary/20 animate-pulse-live" />
+    </div>
+    <div className="glass-card p-6 w-full">
+      <div className="flex justify-center mb-4 text-primary">{icon}</div>
+      <h3 className="text-xl font-bold text-foreground mb-2">{title}</h3>
+      <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
+    </div>
+  </div>
+);
+
+/* ------------------------------------------------------------------ */
+/*  Main Index Page                                                    */
+/* ------------------------------------------------------------------ */
 const Index = () => {
   const navigate = useNavigate();
 
+  // Redirect logged-in users to dashboard
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) navigate("/dashboard");
     });
   }, [navigate]);
 
+  const scrollTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+  };
+
   return (
-    <div className="bg-black text-neutral-200 antialiased relative">
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-black/30 backdrop-blur-lg border-b border-white/10">
-        <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-2 text-xl font-bold">
+    <div className="gradient-mesh min-h-screen text-foreground antialiased">
+      {/* ============================================================ */}
+      {/*  FIXED NAVIGATION                                            */}
+      {/* ============================================================ */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-background/70 backdrop-blur-xl border-b border-white/[0.06]">
+        <div className="container mx-auto px-6 h-16 flex items-center justify-between">
+          {/* Logo */}
+          <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
             <img
               src="/equity-quest-logo.png"
-              alt="Equity Quest Logo"
+              alt="Equity Quest"
               className="h-8 w-auto"
             />
-            <span>Equity Quest</span>
+            <span className="text-lg font-bold tracking-tight text-foreground">Equity Quest</span>
           </div>
 
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" className="hidden sm:inline-flex" onClick={() => navigate("/auth")}>Sign In</Button>
-            <Button onClick={() => navigate("/auth")} className="group bg-primary hover:bg-primary/90 text-primary-foreground">
-              Enter the Arena <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
-            </Button>
+          {/* Nav Links — hidden on mobile */}
+          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground">
+            <button onClick={() => scrollTo("features")} className="hover:text-foreground transition-colors">
+              Features
+            </button>
+            <button onClick={() => scrollTo("how-it-works")} className="hover:text-foreground transition-colors">
+              How it Works
+            </button>
+            <button onClick={() => navigate("/leaderboard")} className="hover:text-foreground transition-colors">
+              Leaderboard
+            </button>
           </div>
+
+          {/* CTA */}
+          <Button
+            onClick={() => navigate("/auth")}
+            className="btn-primary group text-sm px-5 py-2"
+          >
+            Enter Arena
+            <ArrowRight className="ml-1.5 h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+          </Button>
         </div>
-      </header>
+      </nav>
 
-  <main>
-        {/* --- Hero Section --- */}
-        <section className="relative h-screen flex flex-col items-center justify-center text-center overflow-hidden pt-16">
-          <HeroBackgroundChart />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/80 to-black"></div>
+      {/* ============================================================ */}
+      {/*  HERO SECTION                                                 */}
+      {/* ============================================================ */}
+      <section className="relative pt-28 pb-8 lg:pt-36 lg:pb-12 overflow-hidden">
+        {/* Background decorative blobs */}
+        <div className="absolute top-20 left-1/4 w-[500px] h-[500px] bg-primary/[0.06] rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-profit/[0.04] rounded-full blur-[100px] pointer-events-none" />
 
-          <div className="relative z-10 container mx-auto px-6">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-            >
-              <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter leading-[1.1] pb-10 bg-clip-text text-transparent bg-gradient-to-b from-white to-neutral-400">
-                Equity Quest
+        <div className="container mx-auto px-6">
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+            {/* Left — Copy */}
+            <div className="max-w-2xl animate-fade-in" style={{ animationFillMode: "both" }}>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/20 bg-primary/[0.06] text-primary text-xs font-semibold tracking-wide mb-6 animate-fade-in" style={{ animationDelay: "100ms", animationFillMode: "both" }}>
+                <Flame className="h-3.5 w-3.5" />
+                INDIA'S #1 MOCK TRADING ARENA
+              </div>
+
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black tracking-tight leading-[1.08] mb-6 animate-slide-up" style={{ animationDelay: "200ms", animationFillMode: "both" }}>
+                <span className="text-gradient-primary">Master the Market.</span>
+                <br />
+                <span className="text-foreground">Crush the Competition.</span>
               </h1>
-              <p className="mt-2 text-xl text-primary/80 font-semibold tracking-wide">
-                The Apex Investors’ Gauntlet
-              </p>
-              <p className="mt-6 max-w-3xl mx-auto text-lg md:text-xl text-neutral-300 leading-relaxed">
-                Enter a high-stakes arena where strategy meets volatility. Outthink, outtrade, and outperform, the market is your battleground.
-              </p>
-              <div className="mt-10 flex flex-col sm:flex-row justify-center gap-4">
-                <Button size="lg" onClick={() => navigate("/auth")} className="group text-lg px-8 py-7 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20">
-                  Accept the Challenge <ArrowRight className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                </Button>
-                <Button size="lg" variant="outline" className="text-lg px-8 py-7 border-white/20 hover:bg-white/5" onClick={() => navigate("/learn-more") }>
-                  Learn More
-                </Button>
-              </div>
-            </motion.div>
 
-            {/* Mini Stats Row (Task 2 Update) */}
-            <motion.div
-              // Added background, blur, border, and padding to create a styled container
-              className="mt-20 max-w-4xl mx-auto bg-black/30 backdrop-blur-lg border border-white/10 rounded-2xl p-8 grid grid-cols-2 sm:grid-cols-4 gap-y-8 gap-x-4 text-center"
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.4 }}
-              viewport={{ once: true }}
-            >
-              <div>
-                <p className="text-3xl font-bold text-primary">₹5,00,000</p>
-                <p className="text-neutral-400">Starting Capital</p>
-              </div>
-              <div>
-                <p className="text-3xl font-bold text-primary">50+</p>
-                <p className="text-neutral-400">Tradable Assets</p>
-              </div>
-              <div>
-                <p className="text-3xl font-bold text-primary">3</p>
-                <p className="text-neutral-400">Rounds of Chaos</p>
-              </div>
-              <div>
-                <p className="text-3xl font-bold text-primary">Live</p>
-                <p className="text-neutral-400">Market Feeds</p>
-              </div>
-            </motion.div>
-          </div>
-        </section>
-
-        {/* --- Feature Section --- */}
-        <section className="py-24 md:py-32">
-          <div className="container mx-auto px-6">
-            <div className="text-center max-w-3xl mx-auto">
-              <h2 className="text-4xl md:text-5xl font-bold tracking-tighter">An Institutional-Grade Arsenal</h2>
-              <p className="mt-4 text-lg text-neutral-400">
-                Built for those who trade not for luck — but for legacy.
+              <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-xl mb-10 animate-slide-up" style={{ animationDelay: "350ms", animationFillMode: "both" }}>
+                India's most intense mock stock trading arena. Trade NIFTY 50 stocks,
+                commodities, and indices in real-time. Build your portfolio, survive black
+                swan events, and dominate the leaderboard.
               </p>
-            </div>
-            <div className="mt-20 grid md:grid-cols-3 gap-8">
-              <FeatureCard
-                icon={<LineChart className="w-6 h-6 text-primary" />}
-                title="Real-Time Price Action"
-                text="React to market fluctuations as prices shift dynamically — powered by live data and simulated volatility."
-                delay={0.1}
-              />
-              <FeatureCard
-                icon={<BrainCircuit className="w-6 h-6 text-primary" />}
-                title="Human-Driven Volatility"
-                text="The market moves when the Organizer makes it move. Expect the unexpected — narrative-driven shocks await."
-                delay={0.2}
-              />
-              <FeatureCard
-                icon={<ShieldCheck className="w-6 h-6 text-primary" />}
-                title="Risk & Margin Protocols"
-                text="Utilize market, limit, and stop-loss orders with institutional-grade exposure controls and margin alerts."
-                delay={0.3}
-              />
-              <FeatureCard
-                icon={<Newspaper className="w-6 h-6 text-primary" />}
-                title="Dynamic News Flow"
-                text="Market-altering headlines and sudden announcements — each capable of shifting fortunes in seconds."
-                delay={0.4}
-              />
-              <FeatureCard
-                icon={<TrendingUp className="w-6 h-6 text-primary" />}
-                title="Performance Analytics"
-                text="Track risk-adjusted returns using the Sortino Ratio. Your score reflects precision, not just profit."
-                delay={0.5}
-              />
-              <FeatureCard
-                icon={<Trophy className="w-6 h-6 text-primary" />}
-                title="Compete for Glory"
-                text="Climb the leaderboard, outsmart the crowd, and prove your Alpha. Only one walks away with the crown."
-                delay={0.6}
-              />
-            </div>
-          </div>
-        </section>
 
-        {/* --- Final CTA --- */}
-        <section className="py-24 bg-gradient-to-b from-black to-neutral-900">
-          <div className="container mx-auto px-6 text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-              viewport={{ once: true }}
-            >
-              <h2 className="text-4xl md:text-6xl font-bold tracking-tighter bg-clip-text text-transparent bg-gradient-to-b from-white to-neutral-400">
-                Prove Your Alpha.
-              </h2>
-              <p className="mt-4 text-lg text-neutral-400 max-w-2xl mx-auto">
-                The market listens only to those who dominate it. Step forward, trade with precision, and carve your legend.
-              </p>
-              <div className="mt-10">
+              <div className="flex flex-col sm:flex-row gap-4 animate-slide-up" style={{ animationDelay: "500ms", animationFillMode: "both" }}>
                 <Button
                   size="lg"
                   onClick={() => navigate("/auth")}
-                  className="group text-lg px-8 py-7 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
+                  className="btn-primary group text-base px-8 py-6 shadow-lg shadow-primary/20"
                 >
-                  Enter the Arena
+                  Start Trading
+                  <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={() => scrollTo("how-it-works")}
+                  className="text-base px-8 py-6 border-white/10 hover:bg-white/5 text-foreground"
+                >
+                  <Play className="mr-2 h-4 w-4" />
+                  Watch Demo
                 </Button>
               </div>
-            </motion.div>
-          </div>
-        </section>
-      </main>
+            </div>
 
-      {/* --- Footer --- */}
-  <footer className="border-t border-white/10 mt-20 pb-32 md:pb-32"> 
-      {/* Added bottom padding to prevent overlap with fixed ticker on mobile */}
-        <div className="container mx-auto px-6 py-8 flex flex-col md:flex-row justify-between items-center text-sm text-neutral-500">
+            {/* Right — Chart Visualization */}
+            <div className="hidden lg:block animate-fade-in" style={{ animationDelay: "600ms", animationFillMode: "both" }}>
+              <HeroChart />
+            </div>
+          </div>
+        </div>
+
+        {/* Scroll hint */}
+        <div className="flex justify-center mt-12 lg:mt-16 animate-fade-in" style={{ animationDelay: "900ms", animationFillMode: "both" }}>
+          <button
+            onClick={() => scrollTo("ticker")}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ChevronDown className="h-6 w-6 animate-bounce" />
+          </button>
+        </div>
+      </section>
+
+      {/* ============================================================ */}
+      {/*  LIVE TICKER                                                  */}
+      {/* ============================================================ */}
+      <div id="ticker">
+        <LiveTicker />
+      </div>
+
+      {/* ============================================================ */}
+      {/*  STATS SECTION                                                */}
+      {/* ============================================================ */}
+      <section className="py-20 lg:py-24">
+        <div className="container mx-auto px-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+            {[
+              { value: "50+", label: "Tradable Stocks", icon: <BarChart3 className="h-5 w-5" /> },
+              { value: "\u20B95,00,000", label: "Starting Capital", icon: <Target className="h-5 w-5" /> },
+              { value: "3 Rounds", label: "of Intense Trading", icon: <Flame className="h-5 w-5" /> },
+              { value: "Real-time", label: "Live Market Prices", icon: <TrendingUp className="h-5 w-5" /> },
+            ].map((stat, i) => (
+              <div
+                key={stat.label}
+                className="stat-card p-6 lg:p-8 text-center animate-slide-up"
+                style={{ animationDelay: `${i * 100 + 100}ms`, animationFillMode: "both" }}
+              >
+                <div className="flex justify-center mb-3 text-primary">{stat.icon}</div>
+                <p className="text-2xl lg:text-3xl font-black text-gradient-primary mb-1">{stat.value}</p>
+                <p className="text-xs lg:text-sm text-muted-foreground font-medium">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================ */}
+      {/*  FEATURES SECTION                                             */}
+      {/* ============================================================ */}
+      <section id="features" className="py-20 lg:py-28">
+        <div className="container mx-auto px-6">
+          <div className="text-center max-w-2xl mx-auto mb-16 animate-fade-in" style={{ animationFillMode: "both" }}>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight mb-4">
+              Built for <span className="text-gradient-primary">Serious Traders</span>
+            </h2>
+            <p className="text-muted-foreground text-base lg:text-lg leading-relaxed">
+              Every tool you need to outperform. From real-time execution to risk management,
+              this is your institutional-grade arsenal.
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6">
+            <FeatureCard
+              icon={<TrendingUp className="h-6 w-6" />}
+              title="Real-time Trading"
+              description="Execute market, limit, and stop-loss orders instantly. Watch prices update live as the competition heats up."
+              color="hsl(217, 100%, 62%)"
+              delay={100}
+            />
+            <FeatureCard
+              icon={<ArrowDownRight className="h-6 w-6" />}
+              title="Short Selling"
+              description="Profit from falling markets. Borrow shares, sell high, buy back low. Master the art of the short."
+              color="hsl(4, 90%, 58%)"
+              delay={200}
+            />
+            <FeatureCard
+              icon={<Zap className="h-6 w-6" />}
+              title="Black Swan Events"
+              description="Survive sudden market shocks triggered by organizers. Flash crashes, surprise earnings, geopolitical chaos."
+              color="hsl(45, 93%, 52%)"
+              delay={300}
+            />
+            <FeatureCard
+              icon={<Users className="h-6 w-6" />}
+              title="Team Competition"
+              description="Form teams with fellow traders. Strategize together, diversify portfolios, and climb as a unit."
+              color="hsl(280, 80%, 60%)"
+              delay={400}
+            />
+            <FeatureCard
+              icon={<Shield className="h-6 w-6" />}
+              title="Risk Management"
+              description="Set stop-losses, manage margin exposure, and protect your capital. Survive first, profit second."
+              color="hsl(160, 84%, 44%)"
+              delay={500}
+            />
+            <FeatureCard
+              icon={<Trophy className="h-6 w-6" />}
+              title="Live Leaderboard"
+              description="Track your rank in real-time. Performance scored by risk-adjusted returns using the Sortino Ratio."
+              color="hsl(35, 100%, 55%)"
+              delay={600}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================ */}
+      {/*  HOW IT WORKS                                                 */}
+      {/* ============================================================ */}
+      <section id="how-it-works" className="py-20 lg:py-28 relative">
+        {/* Background accent */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/[0.02] to-transparent pointer-events-none" />
+
+        <div className="container mx-auto px-6 relative z-10">
+          <div className="text-center max-w-2xl mx-auto mb-16 animate-fade-in" style={{ animationFillMode: "both" }}>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight mb-4">
+              Three Steps to <span className="text-gradient-primary">Glory</span>
+            </h2>
+            <p className="text-muted-foreground text-base lg:text-lg leading-relaxed">
+              From sign-up to the podium in three intense phases. Are you ready?
+            </p>
+          </div>
+
+          <div className="relative grid md:grid-cols-3 gap-8 lg:gap-12">
+            {/* Connecting line (desktop only) */}
+            <div className="hidden md:block absolute top-8 left-[calc(16.67%+32px)] right-[calc(16.67%+32px)] h-[2px]">
+              <div className="w-full h-full bg-gradient-to-r from-primary/40 via-primary/20 to-primary/40" />
+            </div>
+
+            <StepCard
+              step={1}
+              title="Register"
+              description="Create your account, join a team, and receive your starting capital of Rs. 5,00,000 in virtual funds."
+              icon={<Users className="h-7 w-7" />}
+              delay={200}
+            />
+            <StepCard
+              step={2}
+              title="Trade"
+              description="Analyze markets, execute trades across stocks, commodities, and indices. Survive 3 rounds of escalating intensity."
+              icon={<TrendingUp className="h-7 w-7" />}
+              delay={400}
+            />
+            <StepCard
+              step={3}
+              title="Win"
+              description="Climb the leaderboard with superior risk-adjusted returns. The top trader takes the crown and eternal bragging rights."
+              icon={<Trophy className="h-7 w-7" />}
+              delay={600}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================ */}
+      {/*  FINAL CTA                                                    */}
+      {/* ============================================================ */}
+      <section className="py-24 lg:py-32">
+        <div className="container mx-auto px-6">
+          <div className="glass-card p-12 lg:p-20 text-center relative overflow-hidden animate-fade-in" style={{ animationFillMode: "both" }}>
+            {/* Decorative glow */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-primary/[0.08] rounded-full blur-[80px] pointer-events-none" />
+
+            <div className="relative z-10">
+              <h2 className="text-3xl sm:text-4xl lg:text-6xl font-black tracking-tight mb-5">
+                <span className="text-gradient-primary">Prove Your Alpha.</span>
+              </h2>
+              <p className="text-muted-foreground text-base lg:text-lg max-w-2xl mx-auto mb-10 leading-relaxed">
+                The market listens only to those who dominate it. Step forward, trade with
+                precision, and carve your legend on the leaderboard.
+              </p>
+              <Button
+                size="lg"
+                onClick={() => navigate("/auth")}
+                className="btn-primary group text-base lg:text-lg px-10 py-7 shadow-lg shadow-primary/25"
+              >
+                Enter the Arena
+                <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================ */}
+      {/*  FOOTER                                                       */}
+      {/* ============================================================ */}
+      <footer className="border-t border-white/[0.06]">
+        <div className="container mx-auto px-6 py-8 flex flex-col md:flex-row justify-between items-center text-sm text-muted-foreground">
           <p>&copy; {new Date().getFullYear()} Equity Quest. All Rights Reserved.</p>
           <div className="flex gap-6 mt-4 md:mt-0">
-            <a href="/terms" className="hover:text-primary transition-colors">Terms</a>
-            <a href="/privacy" className="hover:text-primary transition-colors">Privacy</a>
+            <a href="/terms" className="hover:text-foreground transition-colors">Terms</a>
+            <a href="/privacy" className="hover:text-foreground transition-colors">Privacy</a>
+            <a href="/learn-more" className="hover:text-foreground transition-colors">Learn More</a>
           </div>
         </div>
       </footer>
-
-      {/* This is the fixed stock ticker component */}
-      <StockTicker />
     </div>
   );
 };

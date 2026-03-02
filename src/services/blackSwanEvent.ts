@@ -6,7 +6,7 @@ export interface BlackSwanEventData {
   haltDuration: number; // in seconds
   crashPercentage: number; // -8% for Black Swan
   recoveryPercentage: number; // +2% for blue-chip recovery
-  blueChipStocks: string[]; // Reliance, HUL, Infosys
+  blueChipStocks: string[]; // Reliance, Hindustan Unilever, Infosys
   isActive: boolean;
   tradingHalted: boolean;
   haltStartTime?: string;
@@ -25,7 +25,7 @@ export class BlackSwanEventService {
   private readonly haltDuration = 90; // 1.5 minutes = 90 seconds
   private readonly crashPercentage = -8; // -8% crash
   private readonly recoveryPercentage = 2; // +2% recovery for blue-chips
-  private readonly blueChipSymbols = ['RELIANCE', 'HUL', 'INFOSYS'];
+  private readonly blueChipSymbols = ['RELIANCE', 'HINDUNILVR', 'INFY'];
 
   /**
    * Trigger Black Swan event
@@ -328,7 +328,7 @@ export class BlackSwanEventService {
         .from('news')
         .insert({
           title: '📈 Market Recovery: Blue-Chip Stocks Lead the Way',
-          content: `Trading has resumed after the Black Swan event. Blue-chip stocks (Reliance, HUL, Infosys) have shown resilience with a ${this.recoveryPercentage}% recovery from the crash levels. Other stocks remain at their crashed levels. The market is now open for trading.`,
+          content: `Trading has resumed after the Black Swan event. Blue-chip stocks have shown resilience with a ${this.recoveryPercentage}% recovery from the crash levels. Other stocks remain at their crashed levels. The market is now open for trading.`,
           category: 'market_event',
           published_by: session?.user.id,
           is_public: true

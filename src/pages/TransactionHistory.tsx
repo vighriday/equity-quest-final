@@ -1,21 +1,34 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { History, Search, Filter, Download } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Search,
+  Download,
+  Inbox,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { toast } from "sonner";
+import { TableSkeleton } from "@/components/LoadingSkeleton";
+import { EmptyState } from "@/components/EmptyState";
 
 interface Order {
   id: string;
-  order_type: 'market' | 'limit' | 'stop_loss';
+  order_type: "market" | "limit" | "stop_loss";
   quantity: number;
   price: number | null;
   stop_price: number | null;
-  status: 'pending' | 'executed' | 'cancelled' | 'rejected';
+  status: "pending" | "executed" | "cancelled" | "rejected";
   executed_price: number | null;
   executed_at: string | null;
   is_buy: boolean;
@@ -27,34 +40,73 @@ interface Order {
   };
 }
 
+const ORDERS_PER_PAGE = 20;
+
+const ORDER_TYPE_OPTIONS = [
+  { value: "all", label: "All" },
+  { value: "market", label: "Market" },
+  { value: "limit", label: "Limit" },
+  { value: "stop_loss", label: "Stop Loss" },
+] as const;
+
 const TransactionHistory = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
     fetchOrders();
-  }, []);
+  }, [currentPage]);
+
+  // Reset to page 1 whenever filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, typeFilter]);
 
   const fetchOrders = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      setLoading(true);
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) return;
 
-      const { data, error } = await supabase
+      // Build query
+      let query = supabase
         .from("orders")
-        .select(`
+        .select(
+          `
           *,
           assets (
             symbol,
             name,
             current_price
           )
-        `)
+        `,
+          { count: "exact" }
+        )
         .eq("user_id", session.user.id)
         .order("created_at", { ascending: false });
+
+      // Apply status filter at the query level when possible
+      if (statusFilter !== "all") {
+        query = query.eq("status", statusFilter);
+      }
+
+      // Apply type filter at the query level when possible
+      if (typeFilter !== "all") {
+        query = query.eq("order_type", typeFilter);
+      }
+
+      const from = (currentPage - 1) * ORDERS_PER_PAGE;
+      const to = from + ORDERS_PER_PAGE - 1;
+      query = query.range(from, to);
+
+      const { data, error, count } = await query;
 
       if (error) {
         console.error("Error fetching orders:", error);
@@ -63,6 +115,7 @@ const TransactionHistory = () => {
       }
 
       setOrders(data || []);
+      setTotalCount(count ?? 0);
     } catch (error) {
       console.error("Error:", error);
       toast.error("Failed to fetch transaction history");
@@ -71,92 +124,113 @@ const TransactionHistory = () => {
     }
   };
 
-  const filteredOrders = orders.filter(order => {
-    const matchesSearch = order.assets.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.assets.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || order.status === statusFilter;
-    const matchesType = typeFilter === "all" || order.order_type === typeFilter;
-    
-    return matchesSearch && matchesStatus && matchesType;
-  });
+  // Re-fetch when filters change (debounced via the page reset above)
+  useEffect(() => {
+    fetchOrders();
+  }, [statusFilter, typeFilter]);
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'executed':
-        return <Badge className="badge-executed">Executed</Badge>;
-      case 'pending':
-        return <Badge className="badge-pending">Pending</Badge>;
-      case 'cancelled':
-        return <Badge className="badge-cancelled">Cancelled</Badge>;
-      case 'rejected':
-        return <Badge variant="destructive">Rejected</Badge>;
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
-    }
-  };
+  // Client-side search filtering (symbol/name search can't easily be done server-side with joined tables)
+  const filteredOrders = useMemo(() => {
+    if (!searchTerm.trim()) return orders;
+    const term = searchTerm.toLowerCase();
+    return orders.filter(
+      (order) =>
+        order.assets.symbol.toLowerCase().includes(term) ||
+        order.assets.name.toLowerCase().includes(term)
+    );
+  }, [orders, searchTerm]);
 
-  const getOrderTypeBadge = (orderType: string) => {
-    switch (orderType) {
-      case 'market':
-        return <Badge variant="outline">Market</Badge>;
-      case 'limit':
-        return <Badge variant="outline">Limit</Badge>;
-      case 'stop_loss':
-        return <Badge variant="outline">Stop Loss</Badge>;
-      default:
-        return <Badge variant="outline">{orderType}</Badge>;
-    }
-  };
+  const totalPages = Math.max(1, Math.ceil(totalCount / ORDERS_PER_PAGE));
 
   const formatCurrency = (amount: number) => {
-    return `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+    return `\u20B9${amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-IN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return new Date(dateString).toLocaleString("en-IN", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
-  const exportToCSV = () => {
-    const csvContent = [
-      ['Date', 'Symbol', 'Type', 'Side', 'Quantity', 'Price', 'Executed Price', 'Status', 'P&L'],
-      ...filteredOrders.map(order => [
-        formatDate(order.created_at),
-        order.assets.symbol,
-        order.order_type,
-        order.is_buy ? 'Buy' : 'Sell',
-        order.quantity.toString(),
-        order.price ? formatCurrency(order.price) : 'Market',
-        order.executed_price ? formatCurrency(order.executed_price) : '-',
-        order.status,
-        order.executed_price ? 
-          (order.is_buy ? 
-            (order.assets.current_price - order.executed_price) * order.quantity :
-            (order.executed_price - order.assets.current_price) * order.quantity
-          ).toFixed(2) : '-'
-      ])
-    ].map(row => row.join(',')).join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `transaction-history-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+  const computePnL = (order: Order): number | null => {
+    if (!order.executed_price) return null;
+    return order.is_buy
+      ? (order.assets.current_price - order.executed_price) * order.quantity
+      : (order.executed_price - order.assets.current_price) * order.quantity;
   };
 
-  if (loading) {
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "executed":
+        return <span className="badge-executed">Executed</span>;
+      case "pending":
+        return <span className="badge-pending">Pending</span>;
+      case "cancelled":
+        return <span className="badge-cancelled">Cancelled</span>;
+      case "rejected":
+        return <span className="badge-failed">Rejected</span>;
+      default:
+        return (
+          <Badge variant="secondary">{status}</Badge>
+        );
+    }
+  };
+
+  /* ── CSV export with raw numbers (no currency symbol) ── */
+  const exportToCSV = () => {
+    if (filteredOrders.length === 0) {
+      toast.error("No orders to export");
+      return;
+    }
+
+    const csvContent = [
+      ["Date", "Symbol", "Type", "Side", "Quantity", "Price", "Executed Price", "Status", "P&L"],
+      ...filteredOrders.map((order) => {
+        const pnl = computePnL(order);
+        return [
+          formatDate(order.created_at),
+          order.assets.symbol,
+          order.order_type,
+          order.is_buy ? "Buy" : "Sell",
+          order.quantity.toString(),
+          order.price != null ? order.price.toFixed(2) : "Market",
+          order.executed_price != null ? order.executed_price.toFixed(2) : "",
+          order.status,
+          pnl != null ? pnl.toFixed(2) : "",
+        ];
+      }),
+    ]
+      .map((row) => row.join(","))
+      .join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `transaction-history-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    toast.success("CSV exported successfully");
+  };
+
+  /* ── Loading state ── */
+  if (loading && orders.length === 0) {
     return (
       <DashboardLayout>
         <div className="space-y-6">
-          <div className="skeleton h-8 w-64"></div>
-          <div className="skeleton h-96 w-full"></div>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-gradient-primary">
+              Transaction History
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              View all your trading activity and order history
+            </p>
+          </div>
+          <TableSkeleton rows={8} columns={8} />
         </div>
       </DashboardLayout>
     );
@@ -165,151 +239,170 @@ const TransactionHistory = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        {/* ── Page Header ── */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2 text-foreground">
-              <History className="h-8 w-8 text-primary" />
+            <h1 className="text-3xl font-bold tracking-tight text-gradient-primary">
               Transaction History
             </h1>
-            <p className="text-muted-foreground">View all your trading activity and order history</p>
+            <p className="text-muted-foreground mt-1">
+              View all your trading activity and order history
+            </p>
           </div>
-          <Button onClick={exportToCSV} className="flex items-center gap-2">
+          <Button
+            onClick={exportToCSV}
+            variant="outline"
+            className="flex items-center gap-2 shrink-0"
+          >
             <Download className="h-4 w-4" />
             Export CSV
           </Button>
         </div>
 
-        {/* Filters */}
-        <Card className="card-enhanced">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Filter className="h-5 w-5" />
-              Filters
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Search</label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search by symbol or name..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 input-enhanced"
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Status</label>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="input-enhanced">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="executed">Executed</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Order Type</label>
-                <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger className="input-enhanced">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="market">Market</SelectItem>
-                    <SelectItem value="limit">Limit</SelectItem>
-                    <SelectItem value="stop_loss">Stop Loss</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+        {/* ── Filter Bar ── */}
+        <div className="glass-card p-4">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+            {/* Search */}
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by symbol or name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 input-enhanced"
+              />
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Orders Table */}
-        <Card className="card-enhanced">
-          <CardHeader>
-            <CardTitle>
-              Orders ({filteredOrders.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {filteredOrders.length === 0 ? (
-              <div className="text-center py-8">
-                <History className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">No orders found</p>
-              </div>
-            ) : (
+            {/* Order Type filter buttons */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {ORDER_TYPE_OPTIONS.map((opt) => (
+                <Button
+                  key={opt.value}
+                  size="sm"
+                  variant={typeFilter === opt.value ? "default" : "outline"}
+                  onClick={() => setTypeFilter(opt.value)}
+                  className="text-xs"
+                >
+                  {opt.label}
+                </Button>
+              ))}
+            </div>
+
+            {/* Status filter */}
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="input-enhanced w-full lg:w-44">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="executed">Executed</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* ── Orders Table ── */}
+        <div className="glass-card overflow-hidden">
+          {filteredOrders.length === 0 ? (
+            <EmptyState
+              icon={Inbox}
+              title="No orders found"
+              description="Your transaction history will appear here once you place orders. Try adjusting your filters if you believe orders should be shown."
+            />
+          ) : (
+            <>
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="table-premium w-full">
                   <thead>
-                    <tr className="border-b border-border">
-                      <th className="text-left py-3 px-2 text-sm font-medium">Date</th>
-                      <th className="text-left py-3 px-2 text-sm font-medium">Symbol</th>
-                      <th className="text-left py-3 px-2 text-sm font-medium">Type</th>
-                      <th className="text-left py-3 px-2 text-sm font-medium">Side</th>
-                      <th className="text-right py-3 px-2 text-sm font-medium">Quantity</th>
-                      <th className="text-right py-3 px-2 text-sm font-medium">Price</th>
-                      <th className="text-right py-3 px-2 text-sm font-medium">Executed</th>
-                      <th className="text-center py-3 px-2 text-sm font-medium">Status</th>
-                      <th className="text-right py-3 px-2 text-sm font-medium">P&L</th>
+                    <tr>
+                      <th className="text-left">Time</th>
+                      <th className="text-left">Asset</th>
+                      <th className="text-left">Type</th>
+                      <th className="text-left">Side</th>
+                      <th className="text-right">Qty</th>
+                      <th className="text-right">Price</th>
+                      <th className="text-center">Status</th>
+                      <th className="text-right">P&L</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredOrders.map((order, index) => {
-                      const currentPnl = order.executed_price ? 
-                        (order.is_buy ? 
-                          (order.assets.current_price - order.executed_price) * order.quantity :
-                          (order.executed_price - order.assets.current_price) * order.quantity
-                        ) : 0;
+                      const pnl = computePnL(order);
 
                       return (
-                        <tr 
-                          key={order.id} 
-                          className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors animate-fade-in"
-                          style={{ animationDelay: `${index * 0.05}s` }}
+                        <tr
+                          key={order.id}
+                          className="animate-fade-in"
+                          style={{ animationDelay: `${index * 0.03}s` }}
                         >
-                          <td className="py-3 px-2 text-sm">
-                            {formatDate(order.created_at)}
+                          {/* Time */}
+                          <td className="whitespace-nowrap text-sm text-muted-foreground">
+                            {formatDate(order.executed_at ?? order.created_at)}
                           </td>
-                          <td className="py-3 px-2">
+
+                          {/* Asset */}
+                          <td>
                             <div>
-                              <p className="font-medium">{order.assets.symbol}</p>
-                              <p className="text-xs text-muted-foreground">{order.assets.name}</p>
+                              <p className="font-medium text-sm">
+                                {order.assets.symbol}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate max-w-[140px]">
+                                {order.assets.name}
+                              </p>
                             </div>
                           </td>
-                          <td className="py-3 px-2">
-                            {getOrderTypeBadge(order.order_type)}
-                          </td>
-                          <td className="py-3 px-2">
-                            <Badge className={order.is_buy ? "btn-buy" : "btn-sell"}>
-                              {order.is_buy ? "Buy" : "Sell"}
+
+                          {/* Type */}
+                          <td>
+                            <Badge variant="outline" className="text-xs capitalize">
+                              {order.order_type.replace("_", " ")}
                             </Badge>
                           </td>
-                          <td className="text-right py-3 px-2">{order.quantity}</td>
-                          <td className="text-right py-3 px-2">
-                            {order.price ? formatCurrency(order.price) : "Market"}
+
+                          {/* Side */}
+                          <td>
+                            <span
+                              className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-md ${
+                                order.is_buy ? "btn-buy" : "btn-sell"
+                              }`}
+                            >
+                              {order.is_buy ? "Buy" : "Sell"}
+                            </span>
                           </td>
-                          <td className="text-right py-3 px-2">
-                            {order.executed_price ? formatCurrency(order.executed_price) : "-"}
+
+                          {/* Qty */}
+                          <td className="text-right font-medium tabular-nums">
+                            {order.quantity}
                           </td>
-                          <td className="text-center py-3 px-2">
+
+                          {/* Price */}
+                          <td className="text-right tabular-nums">
+                            {order.executed_price
+                              ? formatCurrency(order.executed_price)
+                              : order.price
+                                ? formatCurrency(order.price)
+                                : "Market"}
+                          </td>
+
+                          {/* Status */}
+                          <td className="text-center">
                             {getStatusBadge(order.status)}
                           </td>
-                          <td className={`text-right py-3 px-2 font-medium ${
-                            currentPnl >= 0 ? 'text-profit' : 'text-loss'
-                          }`}>
-                            {order.executed_price ? formatCurrency(currentPnl) : "-"}
+
+                          {/* P&L */}
+                          <td
+                            className={`text-right font-medium tabular-nums ${
+                              pnl != null
+                                ? pnl >= 0
+                                  ? "text-profit"
+                                  : "text-loss"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            {pnl != null ? formatCurrency(pnl) : "-"}
                           </td>
                         </tr>
                       );
@@ -317,9 +410,51 @@ const TransactionHistory = () => {
                   </tbody>
                 </table>
               </div>
-            )}
-          </CardContent>
-        </Card>
+
+              {/* ── Pagination ── */}
+              <div className="flex items-center justify-between border-t border-border/40 px-4 py-3">
+                <p className="text-sm text-muted-foreground">
+                  Showing{" "}
+                  <span className="font-medium text-foreground">
+                    {(currentPage - 1) * ORDERS_PER_PAGE + 1}
+                  </span>
+                  {" - "}
+                  <span className="font-medium text-foreground">
+                    {Math.min(currentPage * ORDERS_PER_PAGE, totalCount)}
+                  </span>{" "}
+                  of{" "}
+                  <span className="font-medium text-foreground">{totalCount}</span>{" "}
+                  orders
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage <= 1}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    className="flex items-center gap-1"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                  <span className="text-sm text-muted-foreground px-2">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    className="flex items-center gap-1"
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </DashboardLayout>
   );

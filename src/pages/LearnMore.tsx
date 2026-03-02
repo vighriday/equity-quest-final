@@ -1,33 +1,107 @@
-import React from "react";
-import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
+import { ArrowLeft, Zap, BookOpen, ShieldCheck, Mail } from "lucide-react";
 
-const LearnMore = () => (
-  <div className="min-h-screen bg-black text-neutral-200 antialiased flex flex-col items-center justify-center px-4 py-24">
-    <motion.div
-      initial={{ opacity: 0, y: 32 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -32 }}
-      transition={{ duration: 0.6, ease: "easeOut" }}
-      className="max-w-3xl w-full bg-white/5 border border-white/10 rounded-2xl backdrop-blur-xl p-10 shadow-lg"
-    >
-      <h1 className="text-4xl font-bold text-primary mb-6 text-center">Learn More About Equity Quest</h1>
-      <p className="mb-6 text-lg text-neutral-400 text-center">Equity Quest is a high-stakes mock trading platform designed for aspiring investors, students, and finance enthusiasts. Our mission is to provide a realistic, competitive, and educational environment where you can test your trading skills without risking real money.</p>
-      <h2 className="text-2xl font-semibold mt-8 mb-2">Key Features</h2>
-      <ul className="list-disc pl-6 mb-6 text-neutral-300">
-        <li className="mb-2"><span className="text-primary font-semibold">Live Price Simulation:</span> Experience real-time price action and volatility, powered by dynamic data and narrative-driven events.</li>
-        <li className="mb-2"><span className="text-primary font-semibold">Risk & Margin Protocols:</span> Trade with market, limit, and stop-loss orders, and receive margin alerts to manage your exposure.</li>
-        <li className="mb-2"><span className="text-primary font-semibold">Performance Analytics:</span> Track your risk-adjusted returns using advanced metrics like the Sortino Ratio.</li>
-        <li className="mb-2"><span className="text-primary font-semibold">Leaderboard Competition:</span> Climb the ranks and prove your skills against other participants in a fair, transparent environment.</li>
-        <li className="mb-2"><span className="text-primary font-semibold">Dynamic News Flow:</span> React to simulated news and market-moving events that test your adaptability and strategy.</li>
-      </ul>
-      <h2 className="text-2xl font-semibold mt-8 mb-2">Who Can Participate?</h2>
-      <p className="mb-6 text-neutral-300">Equity Quest is open to all who want to learn, compete, and grow as investors. Whether you are a beginner or a seasoned trader, our platform offers challenges and learning opportunities for everyone.</p>
-      <h2 className="text-2xl font-semibold mt-8 mb-2">Why Mock Trading?</h2>
-      <p className="mb-6 text-neutral-300">Mock trading allows you to experiment with strategies, understand market dynamics, and build confidence—all without financial risk. It’s the perfect way to prepare for real-world investing.</p>
-      <h2 className="text-2xl font-semibold mt-8 mb-2">Contact & Support</h2>
-      <p className="mb-2 text-neutral-300">Have questions or need help? Reach out to us at <a href="mailto:support@equityquest.com" className="text-primary underline">support@equityquest.com</a>.</p>
-    </motion.div>
-  </div>
-);
+const sections = [
+  {
+    icon: BookOpen,
+    title: "About Equity Quest",
+    content:
+      "Equity Quest is a high-stakes mock trading platform designed for aspiring investors, students, and finance enthusiasts. Our mission is to provide a realistic, competitive, and educational environment where you can test your trading skills without risking real money.",
+  },
+  {
+    icon: Zap,
+    title: "How It Works",
+    items: [
+      "Sign up and receive virtual capital to start trading immediately.",
+      "Browse the live market, analyze sectors, and execute trades with market, limit, and stop-loss orders.",
+      "Track your portfolio performance in real time with advanced analytics and risk metrics.",
+      "Compete on the leaderboard against other participants and climb the ranks.",
+      "React to simulated news and dynamic market events that test your adaptability.",
+    ],
+  },
+  {
+    icon: ShieldCheck,
+    title: "Trading Rules",
+    items: [
+      "Each participant starts with the same virtual capital for fair competition.",
+      "Margin requirements and position limits are enforced to simulate real-world risk management.",
+      "Short selling is available with appropriate margin controls.",
+      "All trades are final once executed -- review your orders carefully.",
+      "Leaderboard rankings are based on total portfolio value and risk-adjusted returns.",
+    ],
+  },
+  {
+    icon: Mail,
+    title: "Contact & Support",
+    content: (
+      <>
+        Have questions or need help? Reach out to us at{" "}
+        <a
+          href="mailto:support@equityquest.com"
+          className="text-primary underline underline-offset-2 hover:text-primary/80 transition-colors"
+        >
+          support@equityquest.com
+        </a>
+        . We are happy to assist with any inquiries about the platform, rules, or your account.
+      </>
+    ),
+  },
+];
+
+const LearnMore = () => {
+  return (
+    <div className="gradient-mesh min-h-screen px-4 py-16 sm:py-24">
+      <div className="max-w-3xl mx-auto space-y-10">
+        {/* Back link */}
+        <Link
+          to="/"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Home
+        </Link>
+
+        {/* Page heading */}
+        <div>
+          <h1 className="text-4xl font-bold text-gradient-primary tracking-tight">
+            Learn More
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            Everything you need to know about Equity Quest.
+          </p>
+        </div>
+
+        {/* Content sections */}
+        {sections.map((section) => (
+          <div key={section.title} className="glass-card rounded-xl p-6 sm:p-8 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <section.icon className="h-5 w-5 text-primary" />
+              </div>
+              <h2 className="text-xl font-semibold">{section.title}</h2>
+            </div>
+
+            {section.content && (
+              <p className="text-muted-foreground leading-relaxed text-sm sm:text-base">
+                {section.content}
+              </p>
+            )}
+
+            {section.items && (
+              <ul className="space-y-2.5 text-muted-foreground text-sm sm:text-base">
+                {section.items.map((item, idx) => (
+                  <li key={idx} className="flex gap-2.5 leading-relaxed">
+                    <span className="text-primary mt-1 shrink-0">&#8226;</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 export default LearnMore;

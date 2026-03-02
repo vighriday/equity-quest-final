@@ -1,23 +1,21 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
-import SectorNavigation from "@/components/SectorNavigation";
 import StockDetailView from "@/components/StockDetailView";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { 
-  Building2, 
-  TrendingUp, 
-  TrendingDown, 
-  BarChart3,
+import {
+  TrendingUp,
+  TrendingDown,
   ArrowLeft,
   Search,
   Activity,
-  DollarSign,
-  RefreshCw
+  BarChart3,
+  RefreshCw,
+  Layers,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { useDebounce } from "@/hooks/useDebounce";
 import { priceUpdateService, PriceUpdateEvent } from "@/services/priceUpdateService";
 import { globalServiceManager } from "@/services/globalServiceManager";
 
@@ -28,70 +26,84 @@ interface Asset {
   current_price: number;
   previous_close: number;
   sector: string;
-  asset_type: 'stock' | 'commodity' | 'index';
+  asset_type: "stock" | "commodity" | "index";
   week_52_high?: number;
   week_52_low?: number;
   market_cap?: number;
   pe_ratio?: number;
 }
 
+/* ------------------------------------------------------------------ */
+/*  Skeleton Card                                                      */
+/* ------------------------------------------------------------------ */
+const SkeletonCard = () => (
+  <div className="glass-card rounded-xl p-5 animate-pulse">
+    <div className="flex items-center justify-between mb-4">
+      <div className="h-5 w-16 bg-muted/60 rounded" />
+      <div className="h-5 w-20 bg-muted/40 rounded-full" />
+    </div>
+    <div className="h-4 w-32 bg-muted/40 rounded mb-3" />
+    <div className="flex items-center justify-between">
+      <div className="h-6 w-24 bg-muted/50 rounded" />
+      <div className="h-5 w-16 bg-muted/40 rounded" />
+    </div>
+  </div>
+);
+
+/* ------------------------------------------------------------------ */
+/*  MarketAnalysis Page                                                */
+/* ------------------------------------------------------------------ */
 const MarketAnalysis = () => {
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearch = useDebounce(searchQuery, 300);
+  const [activeSector, setActiveSector] = useState("All");
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [loading, setLoading] = useState(true);
   const [marketStats, setMarketStats] = useState({
     totalValue: 0,
     totalChange: 0,
     activeStocks: 0,
     topGainers: [] as Asset[],
-    topLosers: [] as Asset[]
+    topLosers: [] as Asset[],
   });
   const [priceUpdateSubscription, setPriceUpdateSubscription] = useState<string | null>(null);
 
+  /* ---------- initialisation ---------- */
   useEffect(() => {
-    // Initialize global services
     const initializeGlobalServices = async () => {
       try {
         await globalServiceManager.initialize();
       } catch (error) {
-        console.error('Error initializing global services:', error);
+        console.error("Error initializing global services:", error);
       }
     };
 
     initializeGlobalServices();
     fetchAssets();
     initializePriceUpdates();
-    
-    // Listen for live price updates from the noise service
+
     const handleAssetPriceUpdate = (event: CustomEvent) => {
       const { assetId, newPrice } = event.detail;
-      console.log(`📊 Market Analysis - Live price update: Asset ${assetId} = ₹${newPrice}`);
-      
-      // Update the assets array with the new price
-      setAssets(prevAssets => 
-        prevAssets.map(asset => 
-          asset.id === assetId 
-            ? { ...asset, current_price: newPrice }
-            : asset
-        )
+      setAssets((prev) =>
+        prev.map((a) => (a.id === assetId ? { ...a, current_price: newPrice } : a))
       );
     };
 
-    window.addEventListener('assetPriceUpdate', handleAssetPriceUpdate as EventListener);
-    
+    window.addEventListener("assetPriceUpdate", handleAssetPriceUpdate as EventListener);
+
     return () => {
       if (priceUpdateSubscription) {
         priceUpdateService.unsubscribe(priceUpdateSubscription);
       }
-      window.removeEventListener('assetPriceUpdate', handleAssetPriceUpdate as EventListener);
+      window.removeEventListener("assetPriceUpdate", handleAssetPriceUpdate as EventListener);
     };
   }, []);
 
-  // Re-initialize price updates when component becomes visible again
+  /* ---------- visibility refresh ---------- */
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        // Always refresh data when component becomes visible (handles reset scenarios)
         fetchAssets();
         if (!priceUpdateSubscription) {
           initializePriceUpdates();
@@ -99,41 +111,42 @@ const MarketAnalysis = () => {
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [priceUpdateSubscription]);
 
+  /* ---------- data fetching ---------- */
   const fetchAssets = async () => {
     try {
+      setLoading(true);
       const { data, error } = await supabase
-        .from('assets')
-        .select('*')
-        .eq('is_active', true)
-        .order('symbol');
+        .from("assets")
+        .select("*")
+        .eq("is_active", true)
+        .order("symbol");
 
       if (error) throw error;
 
       setAssets(data || []);
       calculateMarketStats(data || []);
     } catch (error) {
-      console.error('Error fetching assets:', error);
+      console.error("Error fetching assets:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const calculateMarketStats = (assetsData: Asset[]) => {
-    const totalValue = assetsData.reduce((sum, asset) => sum + asset.current_price, 0);
-    const totalChange = assetsData.reduce((sum, asset) => {
-      const change = ((asset.current_price - asset.previous_close) / asset.previous_close) * 100;
-      return sum + change;
-    }, 0) / assetsData.length;
+    const totalValue = assetsData.reduce((sum, a) => sum + a.current_price, 0);
+    const totalChange =
+      assetsData.reduce((sum, a) => {
+        return sum + ((a.current_price - a.previous_close) / a.previous_close) * 100;
+      }, 0) / (assetsData.length || 1);
 
-    // Calculate top gainers and losers
     const sortedByChange = [...assetsData].sort((a, b) => {
-      const changeA = ((a.current_price - a.previous_close) / a.previous_close) * 100;
-      const changeB = ((b.current_price - b.previous_close) / b.previous_close) * 100;
-      return changeB - changeA;
+      const cA = ((a.current_price - a.previous_close) / a.previous_close) * 100;
+      const cB = ((b.current_price - b.previous_close) / b.previous_close) * 100;
+      return cB - cA;
     });
 
     setMarketStats({
@@ -141,242 +154,288 @@ const MarketAnalysis = () => {
       totalChange,
       activeStocks: assetsData.length,
       topGainers: sortedByChange.slice(0, 5),
-      topLosers: sortedByChange.slice(-5).reverse()
+      topLosers: sortedByChange.slice(-5).reverse(),
     });
   };
 
+  /* ---------- realtime price updates ---------- */
   const initializePriceUpdates = useCallback(async () => {
     try {
-      // Clean up existing subscription if any
       if (priceUpdateSubscription) {
         priceUpdateService.unsubscribe(priceUpdateSubscription);
         setPriceUpdateSubscription(null);
       }
 
       await priceUpdateService.initialize();
-      
+
       const subscriptionId = priceUpdateService.subscribe((update: PriceUpdateEvent) => {
-        // Update assets with new price
-        setAssets(prevAssets => {
-          const updatedAssets = prevAssets.map(asset => {
-            if (asset.id === update.assetId) {
-              return {
-                ...asset,
-                current_price: update.newPrice
-              };
-            }
-            return asset;
-          });
-          
-          // Recalculate market stats with updated prices
-          calculateMarketStats(updatedAssets);
-          return updatedAssets;
+        setAssets((prev) => {
+          const updated = prev.map((a) =>
+            a.id === update.assetId ? { ...a, current_price: update.newPrice } : a
+          );
+          calculateMarketStats(updated);
+          return updated;
         });
 
-        // Update selected asset if it's the one being updated
         if (selectedAsset && selectedAsset.id === update.assetId) {
-          setSelectedAsset(prev => prev ? {
-            ...prev,
-            current_price: update.newPrice
-          } : null);
+          setSelectedAsset((prev) =>
+            prev ? { ...prev, current_price: update.newPrice } : null
+          );
         }
       });
 
       setPriceUpdateSubscription(subscriptionId);
-      console.log('Price updates initialized for MarketAnalysis');
     } catch (error) {
-      console.error('Error initializing price updates:', error);
+      console.error("Error initializing price updates:", error);
     }
   }, [selectedAsset, priceUpdateSubscription]);
 
-  const handleAssetSelect = (asset: Asset) => {
-    setSelectedAsset(asset);
-  };
-
+  /* ---------- helpers ---------- */
   const formatPrice = (price: number, assetType?: string) => {
-    if (assetType === 'commodity') {
-      return `$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (assetType === "commodity") {
+      return `$${price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
-    return `₹${price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `₹${price.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  const handleBackToSectors = () => {
-    setSelectedAsset(null);
-  };
+  const changePercent = (a: Asset) =>
+    ((a.current_price - a.previous_close) / a.previous_close) * 100;
 
+  /* ---------- derived data ---------- */
+  const sectors = useMemo(() => {
+    const set = new Set(assets.map((a) => a.sector).filter(Boolean));
+    return ["All", ...Array.from(set).sort()];
+  }, [assets]);
+
+  const filteredAssets = useMemo(() => {
+    let list = assets;
+    if (activeSector !== "All") {
+      list = list.filter((a) => a.sector === activeSector);
+    }
+    if (debouncedSearch.trim()) {
+      const q = debouncedSearch.toLowerCase();
+      list = list.filter(
+        (a) =>
+          a.symbol.toLowerCase().includes(q) ||
+          a.name.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [assets, activeSector, debouncedSearch]);
+
+  /* ---------- top gainer / loser for stat cards ---------- */
+  const topGainer = marketStats.topGainers[0];
+  const topLoser = marketStats.topLosers[0];
+
+  /* ================================================================ */
+  /*  RENDER                                                           */
+  /* ================================================================ */
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="space-y-8">
+        {/* ---- Header ---- */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold mb-2 flex items-center gap-2 text-foreground">
-              <BarChart3 className="h-8 w-8 text-primary" />
+            <h1 className="text-3xl font-bold text-gradient-primary tracking-tight">
               Market Analysis
             </h1>
-            <p className="text-muted-foreground">
-              Explore sectors and analyze individual stocks with detailed charts and metrics
+            <p className="text-muted-foreground mt-1">
+              Explore sectors, search assets, and dive into detailed stock metrics.
             </p>
           </div>
+
           <div className="flex items-center gap-2">
             {!priceUpdateSubscription && (
-              <Button 
-                variant="outline" 
-                onClick={initializePriceUpdates}
-                className="flex items-center gap-2"
-              >
-                <RefreshCw className="h-4 w-4" />
+              <Button variant="outline" size="sm" onClick={initializePriceUpdates}>
+                <RefreshCw className="h-4 w-4 mr-1.5" />
                 Reconnect
               </Button>
             )}
             {selectedAsset && (
-              <Button 
-                variant="outline" 
-                onClick={handleBackToSectors}
-                className="flex items-center gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Sectors
+              <Button variant="outline" size="sm" onClick={() => setSelectedAsset(null)}>
+                <ArrowLeft className="h-4 w-4 mr-1.5" />
+                Back to Market
               </Button>
             )}
           </div>
         </div>
 
-        {!selectedAsset ? (
-          <div className="grid gap-6 lg:grid-cols-3">
-            {/* Sector Navigation */}
-            <div className="lg:col-span-1">
-              <SectorNavigation 
-                onAssetSelect={handleAssetSelect}
-                selectedAsset={selectedAsset}
-              />
-            </div>
-
-            {/* Market Overview */}
-            <div className="lg:col-span-2 space-y-6">
-              <Card className="card-enhanced">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5 text-primary" />
-                    Market Overview
-                    <div className="ml-auto flex items-center gap-1 px-2 py-1 bg-green-500/10 text-green-600 rounded-full text-xs font-medium">
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                      LIVE
-                    </div>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <div className="text-center p-4 bg-muted/50 rounded-lg transition-all duration-300 hover:bg-muted/70">
-                      <div className={`text-2xl font-bold transition-colors duration-300 ${
-                        marketStats.totalChange >= 0 ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {marketStats.totalChange >= 0 ? '+' : ''}{marketStats.totalChange.toFixed(2)}%
-                      </div>
-                      <div className="text-sm text-muted-foreground">Market Change</div>
-                    </div>
-                    {/* <div className="text-center p-4 bg-muted/50 rounded-lg transition-all duration-300 hover:bg-muted/70">
-                      <div className="text-2xl font-bold text-blue-600 transition-all duration-300">
-                        ₹{(marketStats.totalValue / 10000000).toFixed(1)} Cr
-                      </div>
-                      <div className="text-sm text-muted-foreground">Total Market Cap</div>
-                    </div> */}
-                    <div className="text-center p-4 bg-muted/50 rounded-lg transition-all duration-300 hover:bg-muted/70">
-                      <div className="text-2xl font-bold text-purple-600 transition-all duration-300">
-                        52
-                      </div>
-                      <div className="text-sm text-muted-foreground">Active Stocks</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="card-enhanced">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-primary" />
-                    Top Gainers
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {marketStats.topGainers.map((stock, index) => {
-                      const change = ((stock.current_price - stock.previous_close) / stock.previous_close) * 100;
-                      return (
-                        <div 
-                          key={stock.symbol} 
-                          className="flex items-center justify-between p-3 border border-border rounded-lg hover:border-primary/50 transition-all duration-300 hover:bg-muted/30 cursor-pointer"
-                          onClick={() => handleAssetSelect(stock)}
-                        >
-                          <div className="flex items-center gap-3">
-                            <Badge variant="outline" className="w-8 h-8 flex items-center justify-center p-0">
-                              {index + 1}
-                            </Badge>
-                            <div>
-                              <div className="font-medium">{stock.symbol}</div>
-                              <div className="text-sm text-muted-foreground">{stock.name}</div>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="font-medium transition-all duration-300">
-                              {formatPrice(stock.current_price, stock.asset_type)}
-                            </div>
-                            <div className="text-sm text-green-600 font-medium transition-all duration-300">
-                              +{change.toFixed(2)}%
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="card-enhanced">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingDown className="h-5 w-5 text-primary" />
-                    Top Losers
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {marketStats.topLosers.map((stock, index) => {
-                      const change = ((stock.current_price - stock.previous_close) / stock.previous_close) * 100;
-                      return (
-                        <div 
-                          key={stock.symbol} 
-                          className="flex items-center justify-between p-3 border border-border rounded-lg hover:border-primary/50 transition-all duration-300 hover:bg-muted/30 cursor-pointer"
-                          onClick={() => handleAssetSelect(stock)}
-                        >
-                          <div className="flex items-center gap-3">
-                            <Badge variant="outline" className="w-8 h-8 flex items-center justify-center p-0">
-                              {index + 1}
-                            </Badge>
-                            <div>
-                              <div className="font-medium">{stock.symbol}</div>
-                              <div className="text-sm text-muted-foreground">{stock.name}</div>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="font-medium transition-all duration-300">
-                              {formatPrice(stock.current_price, stock.asset_type)}
-                            </div>
-                            <div className="text-sm text-red-600 font-medium transition-all duration-300">
-                              {change.toFixed(2)}%
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        ) : (
+        {/* ---- Detail View ---- */}
+        {selectedAsset ? (
           <div className="max-w-6xl mx-auto">
             <StockDetailView asset={selectedAsset} />
           </div>
+        ) : (
+          <>
+            {/* ---- Stat Cards ---- */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Active Stocks */}
+              <div className="stat-card rounded-xl p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <Activity className="h-4 w-4 text-primary" />
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Active Stocks
+                  </span>
+                </div>
+                <p className="text-2xl font-bold">{marketStats.activeStocks}</p>
+              </div>
+
+              {/* Avg Change */}
+              <div className="stat-card rounded-xl p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <BarChart3 className="h-4 w-4 text-primary" />
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Avg Change %
+                  </span>
+                </div>
+                <p
+                  className={`text-2xl font-bold ${
+                    marketStats.totalChange >= 0 ? "text-[hsl(var(--profit))]" : "text-[hsl(var(--loss))]"
+                  }`}
+                >
+                  {marketStats.totalChange >= 0 ? "+" : ""}
+                  {marketStats.totalChange.toFixed(2)}%
+                </p>
+              </div>
+
+              {/* Top Gainer */}
+              <div className="stat-card rounded-xl p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="h-4 w-4 text-[hsl(var(--profit))]" />
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Top Gainer
+                  </span>
+                </div>
+                {topGainer ? (
+                  <>
+                    <p className="text-lg font-bold truncate">{topGainer.symbol}</p>
+                    <p className="text-sm text-[hsl(var(--profit))] font-medium">
+                      +{changePercent(topGainer).toFixed(2)}%
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">--</p>
+                )}
+              </div>
+
+              {/* Top Loser */}
+              <div className="stat-card rounded-xl p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingDown className="h-4 w-4 text-[hsl(var(--loss))]" />
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Top Loser
+                  </span>
+                </div>
+                {topLoser ? (
+                  <>
+                    <p className="text-lg font-bold truncate">{topLoser.symbol}</p>
+                    <p className="text-sm text-[hsl(var(--loss))] font-medium">
+                      {changePercent(topLoser).toFixed(2)}%
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">--</p>
+                )}
+              </div>
+            </div>
+
+            {/* ---- Sector Pills + Search ---- */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              {/* Sector scroll */}
+              <div className="flex-1 overflow-x-auto pb-1">
+                <div className="flex items-center gap-2 min-w-max">
+                  <Layers className="h-4 w-4 text-muted-foreground shrink-0" />
+                  {sectors.map((sector) => (
+                    <button
+                      key={sector}
+                      onClick={() => setActiveSector(sector)}
+                      className={`px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200 border ${
+                        activeSector === sector
+                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                          : "bg-muted/40 text-muted-foreground border-border hover:bg-muted/70 hover:text-foreground"
+                      }`}
+                    >
+                      {sector}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Search */}
+              <div className="relative w-full sm:w-72 shrink-0">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search symbol or name..."
+                  className="pl-9 bg-muted/30 border-border/50 focus-visible:ring-primary/30"
+                />
+              </div>
+            </div>
+
+            {/* ---- Asset Grid ---- */}
+            {loading ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <SkeletonCard key={i} />
+                ))}
+              </div>
+            ) : filteredAssets.length === 0 ? (
+              <div className="text-center py-16 text-muted-foreground">
+                <Search className="h-10 w-10 mx-auto mb-3 opacity-40" />
+                <p className="font-medium">No assets found</p>
+                <p className="text-sm mt-1">Try a different sector or search term.</p>
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {filteredAssets.map((asset) => {
+                  const pctChange = changePercent(asset);
+                  const isPositive = pctChange >= 0;
+
+                  return (
+                    <div
+                      key={asset.id}
+                      onClick={() => setSelectedAsset(asset)}
+                      className="glass-card rounded-xl p-5 cursor-pointer group"
+                    >
+                      {/* Symbol + Sector */}
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-sm font-bold tracking-wide">{asset.symbol}</span>
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] px-2 py-0.5 font-medium"
+                        >
+                          {asset.sector}
+                        </Badge>
+                      </div>
+
+                      {/* Name */}
+                      <p className="text-xs text-muted-foreground truncate mb-4">
+                        {asset.name}
+                      </p>
+
+                      {/* Price + Change */}
+                      <div className="flex items-end justify-between">
+                        <span className="text-lg font-semibold tabular-nums">
+                          {formatPrice(asset.current_price, asset.asset_type)}
+                        </span>
+                        <span
+                          className={`text-sm font-medium tabular-nums ${
+                            isPositive
+                              ? "text-[hsl(var(--profit))]"
+                              : "text-[hsl(var(--loss))]"
+                          }`}
+                        >
+                          {isPositive ? "+" : ""}
+                          {pctChange.toFixed(2)}%
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
       </div>
     </DashboardLayout>

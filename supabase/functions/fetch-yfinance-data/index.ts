@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') || '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
@@ -31,15 +31,28 @@ serve(async (req) => {
 
     for (const asset of assets) {
       try {
-        // Fetch current price from yFinance API proxy
-        const priceResponse = await fetch(
-          `https://query1.finance.yahoo.com/v8/finance/chart/${asset.yfinance_ticker}?interval=1d&range=1mo`,
-          {
+        // Fetch current price from yFinance API proxy with timeout
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${asset.yfinance_ticker}?interval=1d&range=1mo`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+        let priceResponse: Response;
+        try {
+          priceResponse = await fetch(url, {
             headers: {
               'User-Agent': 'Mozilla/5.0'
-            }
+            },
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+        } catch (err) {
+          clearTimeout(timeoutId);
+          if (err.name === 'AbortError') {
+            console.error(`Timeout fetching ${asset.symbol}`);
+            continue;
           }
-        );
+          throw err;
+        }
 
         if (!priceResponse.ok) {
           console.error(`Failed to fetch data for ${asset.symbol}`);
@@ -47,6 +60,12 @@ serve(async (req) => {
         }
 
         const priceData = await priceResponse.json();
+
+        if (!priceData?.chart?.result?.[0]) {
+          console.error(`Invalid response structure for ${asset.symbol}`);
+          continue;
+        }
+
         const quote = priceData.chart.result[0];
         const meta = quote.meta;
         const currentPrice = meta.regularMarketPrice;

@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') || '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
@@ -14,7 +14,9 @@ interface Asset {
 interface Position {
   id: string;
   user_id: string;
+  asset_id: string;
   quantity: number;
+  average_price: number;
   current_value: number;
   is_short: boolean;
   initial_margin: number | null;
@@ -48,7 +50,9 @@ serve(async (req) => {
       .select(`
         id,
         user_id,
+        asset_id,
         quantity,
+        average_price,
         current_value,
         is_short,
         initial_margin,
@@ -95,7 +99,9 @@ serve(async (req) => {
 
       // Calculate current margin level
       const currentValue = position.quantity * asset.current_price;
-      const marginLevel = (position.maintenance_margin / currentValue) * 100;
+      const unrealizedLoss = position.quantity * (asset.current_price - position.average_price);
+      const equity = (position.initial_margin || currentValue * 0.25) - Math.max(0, unrealizedLoss);
+      const marginLevel = (equity / currentValue) * 100;
 
       // Check if position needs attention
       if (marginLevel < 15) {
@@ -187,7 +193,7 @@ async function liquidatePosition(supabaseClient: any, position: Position) {
       .from('orders')
       .insert({
         user_id: position.user_id,
-        asset_id: position.id, // Use position ID as we need the actual asset_id
+        asset_id: position.asset_id,
         order_type: 'market',
         quantity: position.quantity,
         price: asset.current_price,
@@ -215,12 +221,20 @@ async function liquidatePosition(supabaseClient: any, position: Position) {
     // Update portfolio cash balance (return margin + profit/loss)
     const marginReturn = position.initial_margin || 0;
     const profitLoss = position.quantity * (asset.current_price - (position.current_value / position.quantity));
-    const cashChange = marginReturn + profitLoss;
+    const cashReturn = marginReturn + profitLoss;
+
+    const { data: portfolio } = await supabaseClient
+      .from('portfolios')
+      .select('cash_balance')
+      .eq('user_id', position.user_id)
+      .single();
+
+    const newBalance = (portfolio?.cash_balance || 0) + cashReturn;
 
     const { error: portfolioError } = await supabaseClient
       .from('portfolios')
       .update({
-        cash_balance: supabaseClient.raw(`cash_balance + ${cashChange}`),
+        cash_balance: newBalance,
         updated_at: new Date().toISOString()
       })
       .eq('user_id', position.user_id);
