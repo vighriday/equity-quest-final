@@ -156,29 +156,29 @@ const Auth = () => {
     <div className="gradient-mesh min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-[440px] animate-fade-in">
         {/* ---- Glass Card ---- */}
-        <div className="glass-card rounded-2xl p-8 sm:p-10">
+        <div className="glass-card rounded-2xl p-6 sm:p-8">
           {/* ---- Logo ---- */}
-          <div className="flex justify-center mb-6">
+          <div className="flex justify-center mb-4">
             <img
               src="/equity-quest-logo.png"
               alt="Equity Quest"
-              className="h-16 w-auto drop-shadow-lg"
+              className="h-12 w-auto drop-shadow-lg"
             />
           </div>
 
           {/* ---- Heading ---- */}
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary via-primary to-primary/70 bg-clip-text text-transparent">
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-primary via-primary to-primary/70 bg-clip-text text-transparent">
               Equity Quest
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-xs text-muted-foreground mt-0.5">
               The Apex Investors' Gauntlet
             </p>
           </div>
 
           {/* ---- Tabs ---- */}
           <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsList className="grid w-full grid-cols-2 mb-5">
               <TabsTrigger
                 value="signin"
                 className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"

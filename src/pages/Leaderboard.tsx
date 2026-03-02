@@ -143,11 +143,11 @@ const Leaderboard = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-8">
+      <div className="space-y-5">
         {/* ───────── Your Position: Sticky Top Banner ───────── */}
         {currentUserEntry && (
           <div className="sticky top-0 z-30 animate-fade-in">
-            <div className="glass-card flex items-center justify-between px-5 py-3 border-l-4 border-l-[hsl(var(--primary))]">
+            <div className="glass-card flex items-center justify-between px-4 py-2.5 border-l-3 border-l-[hsl(var(--primary))]">
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1.5">
                   {currentUserEntry.rank <= 3 ? (
@@ -191,12 +191,12 @@ const Leaderboard = () => {
         {/* ───────── Page Header ───────── */}
         <div className="flex items-center justify-between animate-fade-in">
           <div>
-            <h1 className="text-3xl font-bold text-gradient-primary">
+            <h1 className="text-2xl font-bold text-gradient-primary">
               Leaderboard
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Scored {(SCORING.PNL_WEIGHT * 100).toFixed(0)}% P&L +{" "}
-              {(SCORING.SORTINO_WEIGHT * 100).toFixed(0)}% Sortino Ratio
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {(SCORING.PNL_WEIGHT * 100).toFixed(0)}% P&L +{" "}
+              {(SCORING.SORTINO_WEIGHT * 100).toFixed(0)}% Sortino
             </p>
           </div>
           <Button
@@ -212,10 +212,10 @@ const Leaderboard = () => {
 
         {/* ───────── Winner Banner (when competition ended) ───────── */}
         {competitionEnded && competitionResults.winner && (
-          <div className="glass-card p-6 animate-slide-up border-l-4 border-l-yellow-500">
-            <div className="flex items-center gap-4">
-              <div className="flex-shrink-0 rounded-full bg-yellow-500/15 p-3">
-                <Trophy className="h-8 w-8 text-yellow-500" />
+          <div className="glass-card p-4 animate-slide-up border-l-4 border-l-yellow-500">
+            <div className="flex items-center gap-3">
+              <div className="flex-shrink-0 rounded-full bg-yellow-500/15 p-2.5">
+                <Trophy className="h-6 w-6 text-yellow-500" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-yellow-500 uppercase tracking-wider">
@@ -252,7 +252,7 @@ const Leaderboard = () => {
         {/* ───────── Top 3 Podium Section ───────── */}
         {top3.length >= 3 && (
           <div
-            className="grid grid-cols-3 gap-4 items-end animate-slide-up"
+            className="grid grid-cols-3 gap-3 items-end animate-slide-up"
             style={{ animationDelay: "0.1s", animationFillMode: "backwards" }}
           >
             {/* #2 -- Silver (Left) */}
@@ -260,8 +260,8 @@ const Leaderboard = () => {
               participant={top3[1]}
               rank={2}
               podiumClass="podium-silver"
-              icon={<Medal className="h-7 w-7 text-gray-400" />}
-              heightClass="h-44"
+              icon={<Medal className="h-6 w-6 text-gray-400" />}
+              heightClass="h-40"
               isCurrentUser={top3[1].userId === currentUserId}
               formatScore={formatScore}
               formatSortino={formatSortinoRatio}
@@ -272,8 +272,8 @@ const Leaderboard = () => {
               participant={top3[0]}
               rank={1}
               podiumClass="podium-gold"
-              icon={<Crown className="h-9 w-9 text-yellow-500" />}
-              heightClass="h-56"
+              icon={<Crown className="h-7 w-7 text-yellow-500" />}
+              heightClass="h-48"
               isCurrentUser={top3[0].userId === currentUserId}
               formatScore={formatScore}
               formatSortino={formatSortinoRatio}
@@ -285,8 +285,8 @@ const Leaderboard = () => {
               participant={top3[2]}
               rank={3}
               podiumClass="podium-bronze"
-              icon={<Award className="h-7 w-7 text-amber-700" />}
-              heightClass="h-36"
+              icon={<Award className="h-6 w-6 text-amber-700" />}
+              heightClass="h-32"
               isCurrentUser={top3[2].userId === currentUserId}
               formatScore={formatScore}
               formatSortino={formatSortinoRatio}
@@ -446,7 +446,7 @@ function PodiumCard({
 }: PodiumCardProps) {
   return (
     <div
-      className={`${podiumClass} ${heightClass} rounded-xl flex flex-col items-center justify-end pb-5 px-3 relative transition-transform hover:scale-[1.02] ${
+      className={`${podiumClass} ${heightClass} rounded-xl flex flex-col items-center justify-end pb-4 px-2.5 relative transition-transform hover:scale-[1.01] ${
         isCurrentUser ? "ring-2 ring-[hsl(var(--primary))]" : ""
       }`}
     >

@@ -223,17 +223,17 @@ interface FeatureCardProps {
 
 const FeatureCard = ({ icon, title, description, color, delay }: FeatureCardProps) => (
   <div
-    className="glass-card p-7 group animate-slide-up"
+    className="glass-card p-5 group animate-slide-up"
     style={{ animationDelay: `${delay}ms`, animationFillMode: "both" }}
   >
     <div
-      className="flex items-center justify-center w-12 h-12 rounded-xl mb-5 transition-transform duration-300 group-hover:scale-110"
+      className="flex items-center justify-center w-10 h-10 rounded-lg mb-3 transition-transform duration-300 group-hover:scale-110"
       style={{ background: `${color}20` }}
     >
       <div style={{ color }}>{icon}</div>
     </div>
-    <h3 className="text-lg font-bold text-foreground mb-2">{title}</h3>
-    <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
+    <h3 className="text-base font-bold text-foreground mb-1.5">{title}</h3>
+    <p className="text-[13px] text-muted-foreground leading-relaxed">{description}</p>
   </div>
 );
 
@@ -253,17 +253,15 @@ const StepCard = ({ step, title, description, icon, delay }: StepCardProps) => (
     className="relative flex flex-col items-center text-center animate-slide-up"
     style={{ animationDelay: `${delay}ms`, animationFillMode: "both" }}
   >
-    {/* Numbered circle */}
-    <div className="relative mb-6">
-      <div className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-black text-primary-foreground btn-primary shadow-lg">
+    <div className="relative mb-4">
+      <div className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-black text-primary-foreground btn-primary shadow-md">
         {step}
       </div>
-      <div className="absolute -inset-2 rounded-full border border-primary/20 animate-pulse-live" />
     </div>
-    <div className="glass-card p-6 w-full">
-      <div className="flex justify-center mb-4 text-primary">{icon}</div>
-      <h3 className="text-xl font-bold text-foreground mb-2">{title}</h3>
-      <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
+    <div className="glass-card p-5 w-full">
+      <div className="flex justify-center mb-3 text-primary">{icon}</div>
+      <h3 className="text-lg font-bold text-foreground mb-1.5">{title}</h3>
+      <p className="text-[13px] text-muted-foreground leading-relaxed">{description}</p>
     </div>
   </div>
 );
@@ -329,7 +327,7 @@ const Index = () => {
       {/* ============================================================ */}
       {/*  HERO SECTION                                                 */}
       {/* ============================================================ */}
-      <section className="relative pt-28 pb-8 lg:pt-36 lg:pb-12 overflow-hidden">
+      <section className="relative pt-24 pb-6 lg:pt-28 lg:pb-8 overflow-hidden">
         {/* Background decorative blobs */}
         <div className="absolute top-20 left-1/4 w-[500px] h-[500px] bg-primary/[0.06] rounded-full blur-[120px] pointer-events-none" />
         <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-profit/[0.04] rounded-full blur-[100px] pointer-events-none" />
@@ -343,13 +341,13 @@ const Index = () => {
                 INDIA'S #1 MOCK TRADING ARENA
               </div>
 
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black tracking-tight leading-[1.08] mb-6 animate-slide-up" style={{ animationDelay: "200ms", animationFillMode: "both" }}>
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-black tracking-tight leading-[1.1] mb-5 animate-slide-up" style={{ animationDelay: "200ms", animationFillMode: "both" }}>
                 <span className="text-gradient-primary">Master the Market.</span>
                 <br />
                 <span className="text-foreground">Crush the Competition.</span>
               </h1>
 
-              <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-xl mb-10 animate-slide-up" style={{ animationDelay: "350ms", animationFillMode: "both" }}>
+              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-xl mb-7 animate-slide-up" style={{ animationDelay: "350ms", animationFillMode: "both" }}>
                 India's most intense mock stock trading arena. Trade NIFTY 50 stocks,
                 commodities, and indices in real-time. Build your portfolio, survive black
                 swan events, and dominate the leaderboard.
@@ -384,7 +382,7 @@ const Index = () => {
         </div>
 
         {/* Scroll hint */}
-        <div className="flex justify-center mt-12 lg:mt-16 animate-fade-in" style={{ animationDelay: "900ms", animationFillMode: "both" }}>
+        <div className="flex justify-center mt-8 lg:mt-10 animate-fade-in" style={{ animationDelay: "900ms", animationFillMode: "both" }}>
           <button
             onClick={() => scrollTo("ticker")}
             className="text-muted-foreground hover:text-foreground transition-colors"
@@ -404,23 +402,23 @@ const Index = () => {
       {/* ============================================================ */}
       {/*  STATS SECTION                                                */}
       {/* ============================================================ */}
-      <section className="py-20 lg:py-24">
+      <section className="py-12 lg:py-16">
         <div className="container mx-auto px-6">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
             {[
-              { value: "50+", label: "Tradable Stocks", icon: <BarChart3 className="h-5 w-5" /> },
-              { value: "\u20B95,00,000", label: "Starting Capital", icon: <Target className="h-5 w-5" /> },
-              { value: "3 Rounds", label: "of Intense Trading", icon: <Flame className="h-5 w-5" /> },
-              { value: "Real-time", label: "Live Market Prices", icon: <TrendingUp className="h-5 w-5" /> },
+              { value: "50+", label: "Tradable Stocks", icon: <BarChart3 className="h-4 w-4" /> },
+              { value: "\u20B95,00,000", label: "Starting Capital", icon: <Target className="h-4 w-4" /> },
+              { value: "3 Rounds", label: "of Intense Trading", icon: <Flame className="h-4 w-4" /> },
+              { value: "Real-time", label: "Live Market Prices", icon: <TrendingUp className="h-4 w-4" /> },
             ].map((stat, i) => (
               <div
                 key={stat.label}
-                className="stat-card p-6 lg:p-8 text-center animate-slide-up"
-                style={{ animationDelay: `${i * 100 + 100}ms`, animationFillMode: "both" }}
+                className="stat-card p-4 lg:p-5 text-center animate-slide-up"
+                style={{ animationDelay: `${i * 80 + 80}ms`, animationFillMode: "both" }}
               >
-                <div className="flex justify-center mb-3 text-primary">{stat.icon}</div>
-                <p className="text-2xl lg:text-3xl font-black text-gradient-primary mb-1">{stat.value}</p>
-                <p className="text-xs lg:text-sm text-muted-foreground font-medium">{stat.label}</p>
+                <div className="flex justify-center mb-2 text-primary">{stat.icon}</div>
+                <p className="text-xl lg:text-2xl font-black text-gradient-primary mb-0.5">{stat.value}</p>
+                <p className="text-[11px] lg:text-xs text-muted-foreground font-medium">{stat.label}</p>
               </div>
             ))}
           </div>
@@ -430,19 +428,19 @@ const Index = () => {
       {/* ============================================================ */}
       {/*  FEATURES SECTION                                             */}
       {/* ============================================================ */}
-      <section id="features" className="py-20 lg:py-28">
+      <section id="features" className="py-14 lg:py-20">
         <div className="container mx-auto px-6">
-          <div className="text-center max-w-2xl mx-auto mb-16 animate-fade-in" style={{ animationFillMode: "both" }}>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight mb-4">
+          <div className="text-center max-w-2xl mx-auto mb-10 animate-fade-in" style={{ animationFillMode: "both" }}>
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight mb-3">
               Built for <span className="text-gradient-primary">Serious Traders</span>
             </h2>
-            <p className="text-muted-foreground text-base lg:text-lg leading-relaxed">
+            <p className="text-muted-foreground text-sm lg:text-base leading-relaxed">
               Every tool you need to outperform. From real-time execution to risk management,
               this is your institutional-grade arsenal.
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4">
             <FeatureCard
               icon={<TrendingUp className="h-6 w-6" />}
               title="Real-time Trading"
@@ -492,21 +490,21 @@ const Index = () => {
       {/* ============================================================ */}
       {/*  HOW IT WORKS                                                 */}
       {/* ============================================================ */}
-      <section id="how-it-works" className="py-20 lg:py-28 relative">
+      <section id="how-it-works" className="py-14 lg:py-20 relative">
         {/* Background accent */}
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/[0.02] to-transparent pointer-events-none" />
 
         <div className="container mx-auto px-6 relative z-10">
-          <div className="text-center max-w-2xl mx-auto mb-16 animate-fade-in" style={{ animationFillMode: "both" }}>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight mb-4">
+          <div className="text-center max-w-2xl mx-auto mb-10 animate-fade-in" style={{ animationFillMode: "both" }}>
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight mb-3">
               Three Steps to <span className="text-gradient-primary">Glory</span>
             </h2>
-            <p className="text-muted-foreground text-base lg:text-lg leading-relaxed">
+            <p className="text-muted-foreground text-sm lg:text-base leading-relaxed">
               From sign-up to the podium in three intense phases. Are you ready?
             </p>
           </div>
 
-          <div className="relative grid md:grid-cols-3 gap-8 lg:gap-12">
+          <div className="relative grid md:grid-cols-3 gap-5 lg:gap-8">
             {/* Connecting line (desktop only) */}
             <div className="hidden md:block absolute top-8 left-[calc(16.67%+32px)] right-[calc(16.67%+32px)] h-[2px]">
               <div className="w-full h-full bg-gradient-to-r from-primary/40 via-primary/20 to-primary/40" />
@@ -540,24 +538,24 @@ const Index = () => {
       {/* ============================================================ */}
       {/*  FINAL CTA                                                    */}
       {/* ============================================================ */}
-      <section className="py-24 lg:py-32">
+      <section className="py-16 lg:py-20">
         <div className="container mx-auto px-6">
-          <div className="glass-card p-12 lg:p-20 text-center relative overflow-hidden animate-fade-in" style={{ animationFillMode: "both" }}>
+          <div className="glass-card p-8 lg:p-14 text-center relative overflow-hidden animate-fade-in" style={{ animationFillMode: "both" }}>
             {/* Decorative glow */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-primary/[0.08] rounded-full blur-[80px] pointer-events-none" />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[200px] bg-primary/[0.06] rounded-full blur-[80px] pointer-events-none" />
 
             <div className="relative z-10">
-              <h2 className="text-3xl sm:text-4xl lg:text-6xl font-black tracking-tight mb-5">
+              <h2 className="text-2xl sm:text-3xl lg:text-5xl font-black tracking-tight mb-4">
                 <span className="text-gradient-primary">Prove Your Alpha.</span>
               </h2>
-              <p className="text-muted-foreground text-base lg:text-lg max-w-2xl mx-auto mb-10 leading-relaxed">
+              <p className="text-muted-foreground text-sm lg:text-base max-w-2xl mx-auto mb-7 leading-relaxed">
                 The market listens only to those who dominate it. Step forward, trade with
                 precision, and carve your legend on the leaderboard.
               </p>
               <Button
                 size="lg"
                 onClick={() => navigate("/auth")}
-                className="btn-primary group text-base lg:text-lg px-10 py-7 shadow-lg shadow-primary/25"
+                className="btn-primary group text-base px-8 py-5 shadow-lg shadow-primary/25"
               >
                 Enter the Arena
                 <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />

@@ -449,14 +449,14 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     <header
       className={cn(
         "sticky top-0 z-30 hidden lg:flex items-center justify-between",
-        "h-16 px-6 bg-background/80 backdrop-blur-xl border-b border-border",
+        "h-12 px-5 bg-background/80 backdrop-blur-xl border-b border-border",
         "transition-all duration-300 ease-in-out",
         collapsed ? "ml-[72px]" : "ml-[256px]"
       )}
     >
       {/* Page Title */}
       <div>
-        <h1 className="text-lg font-semibold text-foreground">
+        <h1 className="text-sm font-semibold text-foreground">
           {currentPageTitle}
         </h1>
       </div>
@@ -531,7 +531,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           collapsed && "lg:ml-[72px]",
           // Mobile: padding for top header and bottom bar
           "pt-14 pb-16 lg:pt-0 lg:pb-0",
-          "p-4 lg:p-6"
+          "p-3 lg:p-4"
         )}
       >
         {children}

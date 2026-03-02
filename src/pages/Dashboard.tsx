@@ -628,88 +628,78 @@ const Dashboard = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-4 animate-fade-in">
         <TradingHaltBanner />
 
         {/* Portfolio Header - Full Width Glass Card with Stats */}
-        <div className="glass-card stat-card p-6">
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h1 className="text-2xl font-bold text-gradient-primary flex items-center gap-2.5">
-                <Activity className="h-7 w-7 text-primary" />
-                Trading Dashboard
-              </h1>
-              <p className="text-sm text-muted-foreground mt-1">Real-time portfolio overview</p>
+        <div className="glass-card stat-card p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-primary" />
+              <h1 className="text-lg font-bold text-gradient-primary">Portfolio</h1>
             </div>
-            <div className="flex items-center gap-2 text-xs">
-              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+            <div className="flex items-center gap-1.5 text-[11px]">
               <span className="text-muted-foreground">Live</span>
-              <div className="h-2 w-2 rounded-full bg-profit pulse-live"></div>
+              <div className="h-1.5 w-1.5 rounded-full bg-profit pulse-live"></div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {/* Total Value */}
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/20 border border-border/30">
-              <div className="rounded-lg p-2 bg-primary/10">
-                <PieChart className="h-4 w-4 text-primary" />
+            <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/20 border border-border/30">
+              <div className="rounded-md p-1.5 bg-primary/10">
+                <PieChart className="h-3.5 w-3.5 text-primary" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Value</p>
-                <div className="text-xl font-bold mt-0.5">
+                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Total Value</p>
+                <div className="text-lg font-bold">
                   <AnimatedCounter value={activePortfolio?.total_value ?? 0} prefix="₹" decimals={2} />
                 </div>
               </div>
             </div>
 
             {/* Cash Balance */}
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/20 border border-border/30">
-              <div className="rounded-lg p-2 bg-primary/10">
-                <Wallet className="h-4 w-4 text-primary" />
+            <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/20 border border-border/30">
+              <div className="rounded-md p-1.5 bg-primary/10">
+                <Wallet className="h-3.5 w-3.5 text-primary" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Cash Balance</p>
-                <div className="text-xl font-bold mt-0.5">
+                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Cash</p>
+                <div className="text-lg font-bold">
                   <AnimatedCounter value={activePortfolio?.cash_balance ?? 0} prefix="₹" decimals={2} />
                 </div>
               </div>
             </div>
 
             {/* P&L */}
-            <div className={`flex items-start gap-3 p-3 rounded-lg border border-border/30 ${activePortfolio && activePortfolio.profit_loss >= 0 ? 'bg-profit/5' : 'bg-loss/5'}`}>
-              <div className={`rounded-lg p-2 ${activePortfolio && activePortfolio.profit_loss >= 0 ? 'bg-profit/10' : 'bg-loss/10'}`}>
+            <div className={`flex items-center gap-2.5 p-2.5 rounded-lg border border-border/30 ${activePortfolio && activePortfolio.profit_loss >= 0 ? 'bg-profit/5' : 'bg-loss/5'}`}>
+              <div className={`rounded-md p-1.5 ${activePortfolio && activePortfolio.profit_loss >= 0 ? 'bg-profit/10' : 'bg-loss/10'}`}>
                 {activePortfolio && activePortfolio.profit_loss >= 0 ? (
-                  <TrendingUp className="h-4 w-4 text-profit" />
+                  <TrendingUp className="h-3.5 w-3.5 text-profit" />
                 ) : (
-                  <TrendingDown className="h-4 w-4 text-loss" />
+                  <TrendingDown className="h-3.5 w-3.5 text-loss" />
                 )}
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                  Profit / Loss
-                  {calculatedPortfolio && <span className="h-1.5 w-1.5 rounded-full bg-profit inline-block pulse-live"></span>}
-                </p>
-                <div className={`text-xl font-bold mt-0.5 ${activePortfolio && activePortfolio.profit_loss >= 0 ? 'text-profit' : 'text-loss'}`}>
+                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">P&L</p>
+                <div className={`text-lg font-bold ${activePortfolio && activePortfolio.profit_loss >= 0 ? 'text-profit' : 'text-loss'}`}>
                   <AnimatedCounter value={activePortfolio?.profit_loss ?? 0} prefix="₹" decimals={2} />
                 </div>
               </div>
             </div>
 
             {/* Return % */}
-            <div className={`flex items-start gap-3 p-3 rounded-lg border border-border/30 ${activePortfolio && activePortfolio.profit_loss_percentage >= 0 ? 'bg-profit/5' : 'bg-loss/5'}`}>
-              <div className={`rounded-lg p-2 ${activePortfolio && activePortfolio.profit_loss_percentage >= 0 ? 'bg-profit/10' : 'bg-loss/10'}`}>
+            <div className={`flex items-center gap-2.5 p-2.5 rounded-lg border border-border/30 ${activePortfolio && activePortfolio.profit_loss_percentage >= 0 ? 'bg-profit/5' : 'bg-loss/5'}`}>
+              <div className={`rounded-md p-1.5 ${activePortfolio && activePortfolio.profit_loss_percentage >= 0 ? 'bg-profit/10' : 'bg-loss/10'}`}>
                 {activePortfolio && activePortfolio.profit_loss_percentage >= 0 ? (
-                  <ArrowUpRight className="h-4 w-4 text-profit" />
+                  <ArrowUpRight className="h-3.5 w-3.5 text-profit" />
                 ) : (
-                  <ArrowDownRight className="h-4 w-4 text-loss" />
+                  <ArrowDownRight className="h-3.5 w-3.5 text-loss" />
                 )}
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                  Return %
-                  {calculatedPortfolio && <span className="h-1.5 w-1.5 rounded-full bg-profit inline-block pulse-live"></span>}
-                </p>
-                <div className={`text-xl font-bold mt-0.5 ${activePortfolio && activePortfolio.profit_loss_percentage >= 0 ? 'text-profit' : 'text-loss'}`}>
+                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Return</p>
+                <div className={`text-lg font-bold ${activePortfolio && activePortfolio.profit_loss_percentage >= 0 ? 'text-profit' : 'text-loss'}`}>
                   <AnimatedCounter value={activePortfolio?.profit_loss_percentage ?? 0} suffix="%" decimals={2} />
                 </div>
               </div>
@@ -719,10 +709,10 @@ const Dashboard = () => {
 
         {/* Competition Status Banner */}
         {competitionStatus !== "active" && (
-          <div className="glass-card p-4">
-            <div className="flex items-center gap-3">
-              <div className={`rounded-full p-2 ${competitionStatus === "not_started" ? "bg-loss/10" : "bg-warning/10"}`}>
-                <AlertCircle className={`h-5 w-5 ${competitionStatus === "not_started" ? "text-loss" : "text-warning"}`} />
+          <div className="glass-card px-4 py-3">
+            <div className="flex items-center gap-2.5">
+              <div className={`rounded-full p-1.5 ${competitionStatus === "not_started" ? "bg-loss/10" : "bg-warning/10"}`}>
+                <AlertCircle className={`h-4 w-4 ${competitionStatus === "not_started" ? "text-loss" : "text-warning"}`} />
               </div>
               <div>
                 <h3 className="font-semibold text-sm">
@@ -730,7 +720,7 @@ const Dashboard = () => {
                               competitionStatus === "paused" ? "Paused" :
                               competitionStatus === "completed" ? "Completed" : "Inactive"}
                 </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
+                <p className="text-[11px] text-muted-foreground">
                   {competitionStatus === "not_started" ? "The competition has not been started yet. Please wait for the admin to begin." :
                    competitionStatus === "paused" ? "The competition is currently paused. Trading is disabled." :
                    competitionStatus === "completed" ? "The competition has ended. Thank you for participating!" :
@@ -752,19 +742,19 @@ const Dashboard = () => {
         />
 
         {/* Main Grid: Trading Panel (2 cols) + News (1 col) */}
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-4 lg:grid-cols-3">
           {/* Trading Panel */}
           <div className="lg:col-span-2 glass-card p-0 overflow-hidden">
-            <div className="p-5 border-b border-border/30">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <ShoppingCart className="h-5 w-5 text-primary" />
-                <span className="text-gradient-primary">Place Order</span>
+            <div className="px-4 py-3 border-b border-border/30">
+              <h2 className="text-sm font-semibold flex items-center gap-2 uppercase tracking-wider text-muted-foreground">
+                <ShoppingCart className="h-4 w-4 text-primary" />
+                Place Order
               </h2>
             </div>
-            <div className="p-5 space-y-5">
+            <div className="p-4 space-y-4">
               {/* Asset Selector */}
               <div className="space-y-2">
-                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Select Asset</Label>
+                <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Asset</Label>
                 <Select value={selectedAsset} onValueChange={setSelectedAsset}>
                   <SelectTrigger className="input-enhanced h-11">
                     <SelectValue placeholder="Choose an asset to trade" />
@@ -782,7 +772,7 @@ const Dashboard = () => {
 
               {/* Order Type Button Group */}
               <div className="space-y-2">
-                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Order Type</Label>
+                <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Order Type</Label>
                 <div className="flex gap-1 p-1 bg-muted/40 rounded-lg border border-border/30">
                   {[
                     { value: "market", label: "Market" },
@@ -806,7 +796,7 @@ const Dashboard = () => {
 
               {/* Quantity */}
               <div className="space-y-2">
-                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Quantity</Label>
+                <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Qty</Label>
                 <Input
                   type="number"
                   placeholder="Enter quantity"
@@ -819,7 +809,7 @@ const Dashboard = () => {
               </div>
 
               {/* Short Sell Toggle */}
-              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/20 border border-border/30">
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-muted/20 border border-border/30">
                 <div className="flex items-center gap-2.5">
                   <input
                     type="checkbox"
@@ -842,7 +832,7 @@ const Dashboard = () => {
               {/* Limit / Stop Price (conditional) */}
               {(orderType === "limit" || orderType === "stop_loss") && (
                 <div className="space-y-2 animate-fade-in">
-                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
                     {orderType === "limit" ? "Limit Price" : "Stop Price"}
                   </Label>
                   <Input
@@ -859,8 +849,8 @@ const Dashboard = () => {
 
               {/* Order Preview */}
               {selectedAssetData && quantity && parseInt(quantity) > 0 && (
-                <div className="rounded-lg border border-border/30 bg-muted/10 p-4 space-y-2.5 animate-fade-in">
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Order Preview</h4>
+                <div className="rounded-lg border border-border/30 bg-muted/10 p-3 space-y-2 animate-fade-in">
+                  <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Order Preview</h4>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Asset Price</span>
                     <span className="font-medium">₹{selectedAssetData.current_price.toFixed(2)}</span>
@@ -902,13 +892,13 @@ const Dashboard = () => {
 
           {/* News Feed */}
           <div className="glass-card p-0 overflow-hidden">
-            <div className="p-5 border-b border-border/30">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <Newspaper className="h-5 w-5 text-primary" />
-                <span className="text-gradient-primary">Market News</span>
+            <div className="px-4 py-3 border-b border-border/30">
+              <h2 className="text-sm font-semibold flex items-center gap-2 uppercase tracking-wider text-muted-foreground">
+                <Newspaper className="h-4 w-4 text-primary" />
+                News
               </h2>
             </div>
-            <div className="p-4 space-y-3 max-h-[600px] overflow-y-auto">
+            <div className="p-3 space-y-2 max-h-[500px] overflow-y-auto">
               {news.length === 0 ? (
                 <EmptyState
                   icon={Newspaper}
@@ -919,18 +909,18 @@ const Dashboard = () => {
                 news.map((item, index) => (
                   <div
                     key={item.id}
-                    className="p-3 rounded-lg bg-muted/15 border border-border/20 hover:border-primary/20 transition-all duration-200 animate-fade-in"
-                    style={{ animationDelay: `${index * 0.08}s` }}
+                    className="p-2.5 rounded-md bg-muted/15 border border-border/20 hover:border-primary/15 transition-colors duration-150 animate-fade-in"
+                    style={{ animationDelay: `${index * 0.06}s` }}
                   >
-                    <div className="flex items-start justify-between gap-2 mb-1.5">
-                      <h4 className="font-medium text-sm leading-snug">{item.title}</h4>
-                      <span className="text-[10px] text-muted-foreground whitespace-nowrap mt-0.5">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <h4 className="font-medium text-[13px] leading-snug">{item.title}</h4>
+                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">
                         {getRelativeTime(item.created_at)}
                       </span>
                     </div>
-                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{item.content}</p>
+                    <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">{item.content}</p>
                     {item.category && (
-                      <Badge variant="secondary" className="mt-2 text-[10px] px-2 py-0">
+                      <Badge variant="secondary" className="mt-1.5 text-[10px] px-1.5 py-0">
                         {item.category}
                       </Badge>
                     )}
@@ -945,19 +935,19 @@ const Dashboard = () => {
         {session?.user?.id && <TradingQueue userId={session.user.id} />}
 
         {/* Positions, Orders & Margin Tabs */}
-        <Tabs defaultValue="positions" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3 glass-card h-11">
-            <TabsTrigger value="positions" className="text-sm">Positions</TabsTrigger>
-            <TabsTrigger value="orders" className="text-sm">Recent Orders</TabsTrigger>
-            <TabsTrigger value="margin" className="text-sm">Margin Status</TabsTrigger>
+        <Tabs defaultValue="positions" className="space-y-3">
+          <TabsList className="grid w-full grid-cols-3 glass-card h-9">
+            <TabsTrigger value="positions" className="text-[13px]">Positions</TabsTrigger>
+            <TabsTrigger value="orders" className="text-[13px]">Orders</TabsTrigger>
+            <TabsTrigger value="margin" className="text-[13px]">Margin</TabsTrigger>
           </TabsList>
 
           <TabsContent value="positions">
             <div className="glass-card p-0 overflow-hidden">
-              <div className="p-5 border-b border-border/30">
-                <h2 className="text-lg font-semibold flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-primary" />
-                  <span className="text-gradient-primary">Your Positions</span>
+              <div className="px-4 py-3 border-b border-border/30">
+                <h2 className="text-sm font-semibold flex items-center gap-2 uppercase tracking-wider text-muted-foreground">
+                  <BarChart3 className="h-4 w-4 text-primary" />
+                  Your Positions
                 </h2>
               </div>
               <div className="p-0">
@@ -1023,11 +1013,11 @@ const Dashboard = () => {
 
           <TabsContent value="orders">
             <div className="glass-card p-0 overflow-hidden">
-              <div className="p-5 border-b border-border/30">
-                <h2 className="text-lg font-semibold">Recent Trade Executions</h2>
+              <div className="px-4 py-3 border-b border-border/30">
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Recent Trades</h2>
               </div>
-              <div className="p-5">
-                <p className="text-sm text-muted-foreground text-center py-8">
+              <div className="p-4">
+                <p className="text-sm text-muted-foreground text-center py-6">
                   View your complete order history in the{" "}
                   <a href="/history" className="text-primary hover:underline font-medium">Transaction History</a> page
                 </p>
