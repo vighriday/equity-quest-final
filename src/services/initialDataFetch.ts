@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import { nifty50Assets } from "@/data/nifty50Assets";
 
 export interface TechnicalFundamentals {
@@ -138,7 +139,7 @@ export class InitialDataFetchService {
       // Call the Supabase Edge Function to fetch yFinance data
       const { data, error } = await supabase.functions.invoke('fetch-yfinance-data', {
         body: {
-          symbols: [asset.yFinanceTicker],
+          symbols: [asset.yfinance_ticker],
           includeHistorical: true,
           includeFundamentals: true
         }
@@ -195,8 +196,8 @@ export class InitialDataFetchService {
         currentPrice,
         previousClose,
         sector: asset.sector,
-        assetType: asset.assetType,
-        yFinanceTicker: asset.yFinanceTicker,
+        assetType: 'stock',
+        yFinanceTicker: asset.yfinance_ticker,
         technicalFundamentals,
         historicalData,
         week52High,
@@ -254,7 +255,7 @@ export class InitialDataFetchService {
         .upsert({
           asset_id: asset.id,
           metric_type: 'technical_fundamentals',
-          data: assetData.technicalFundamentals,
+          data: assetData.technicalFundamentals as unknown as Json,
           fetched_at: new Date().toISOString()
         }, {
           onConflict: 'asset_id,metric_type'
@@ -270,7 +271,7 @@ export class InitialDataFetchService {
         .upsert({
           asset_id: asset.id,
           metric_type: 'historical_price',
-          data: assetData.historicalData,
+          data: assetData.historicalData as unknown as Json,
           fetched_at: new Date().toISOString()
         }, {
           onConflict: 'asset_id,metric_type'

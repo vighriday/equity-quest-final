@@ -330,7 +330,9 @@ export class PriceUpdateService {
         return null;
       }
 
-      return parseFloat(data.current_price);
+      return typeof data.current_price === 'number'
+        ? data.current_price
+        : parseFloat(String(data.current_price));
     } catch (error) {
       console.error(`Error getting current price for asset ${assetId}:`, error);
       return null;
@@ -358,8 +360,8 @@ export class PriceUpdateService {
       }
 
       return data?.map(item => ({
-        price: parseFloat(item.price),
-        timestamp: item.created_at
+        price: typeof item.price === 'number' ? item.price : parseFloat(String(item.price)),
+        timestamp: item.created_at,
       })) || [];
     } catch (error) {
       console.error(`Error getting price history for asset ${assetId}:`, error);

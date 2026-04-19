@@ -41,8 +41,7 @@ const TradingQueue = ({ userId }: TradingQueueProps) => {
         return;
       }
 
-      // Try to fetch with is_short_sell column first, fallback if it doesn't exist
-      let { data, error } = await supabase
+      const { data, error } = await supabase
         .from('orders')
         .select(`
           id,
@@ -64,53 +63,27 @@ const TradingQueue = ({ userId }: TradingQueueProps) => {
         .in('status', ['pending', 'processing'])
         .order('created_at', { ascending: false });
 
-      // If is_short_sell column doesn't exist, try without it
-      if (error && error.message.includes('is_short_sell')) {
-        console.warn('is_short_sell column not found, fetching orders without it');
-        const fallbackResult = await supabase
-          .from('orders')
-          .select(`
-            id,
-            asset_id,
-            order_type,
-            quantity,
-            price,
-            stop_price,
-            is_buy,
-            status,
-            created_at,
-            executed_at,
-            executed_price,
-            error_message,
-            assets!inner(symbol, name)
-          `)
-          .eq('user_id', userId)
-          .in('status', ['pending', 'processing'])
-          .order('created_at', { ascending: false });
-        
-        data = fallbackResult.data;
-        error = fallbackResult.error;
-      }
-
       if (error) throw error;
 
-      const orders: PendingOrder[] = (data || []).map(order => ({
-        id: order.id,
-        asset_id: order.asset_id,
-        asset_symbol: order.assets.symbol,
-        asset_name: order.assets.name,
-        order_type: order.order_type,
-        quantity: order.quantity,
-        price: order.price,
-        stop_price: order.stop_price,
-        is_buy: order.is_buy,
-        is_short_sell: order.is_short_sell || false, // Default to false if column doesn't exist
-        status: order.status,
-        created_at: order.created_at,
-        executed_at: order.executed_at,
-        executed_price: order.executed_price,
-        error_message: order.error_message
-      }));
+      const orders: PendingOrder[] = (data || [])
+        .filter((order) => order.status !== 'rejected')
+        .map((order) => ({
+          id: order.id,
+          asset_id: order.asset_id,
+          asset_symbol: order.assets.symbol,
+          asset_name: order.assets.name,
+          order_type: order.order_type,
+          quantity: order.quantity,
+          price: order.price,
+          stop_price: order.stop_price,
+          is_buy: order.is_buy,
+          is_short_sell: order.is_short_sell ?? false,
+          status: order.status as PendingOrder['status'],
+          created_at: order.created_at,
+          executed_at: order.executed_at,
+          executed_price: order.executed_price,
+          error_message: order.error_message,
+        }));
 
       setPendingOrders(orders);
     } catch (error) {

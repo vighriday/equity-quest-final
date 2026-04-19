@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -20,34 +20,43 @@ const TradingHaltBanner = () => {
   });
   const [loading, setLoading] = useState(true);
 
+  // Use a ref so the interval callback can read the latest halted state
+  // without needing to re-create the effect (which would cause cycles).
+  const isHaltedRef = useRef(haltStatus.isHalted);
+  useEffect(() => {
+    isHaltedRef.current = haltStatus.isHalted;
+  }, [haltStatus.isHalted]);
+
   useEffect(() => {
     fetchHaltStatus();
 
-    // Check status every second when halted
     const interval = setInterval(() => {
-      if (haltStatus.isHalted) {
+      if (isHaltedRef.current) {
         fetchHaltStatus();
       }
     }, 1000);
 
-    // Listen for halt status changes
     const channel = supabase
       .channel('trading-halt-changes')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'competition_settings',
-        filter: 'setting_key=eq.trading_halt'
-      }, () => {
-        fetchHaltStatus();
-      })
+      .on(
+        'postgres_changes' as never,
+        {
+          event: '*',
+          schema: 'public',
+          table: 'competition_settings',
+          filter: 'setting_key=eq.trading_halt',
+        },
+        () => {
+          fetchHaltStatus();
+        },
+      )
       .subscribe();
 
     return () => {
       clearInterval(interval);
       supabase.removeChannel(channel);
     };
-  }, [haltStatus.isHalted]);
+  }, []);
 
   const fetchHaltStatus = async () => {
     try {

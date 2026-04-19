@@ -30,7 +30,8 @@ export function useSupabaseChannel(configs: ChannelConfig[]) {
       const channel = supabase
         .channel(config.channelName)
         .on(
-          'postgres_changes',
+          // Supabase v2 typings narrow this signature; cast to satisfy the union.
+          'postgres_changes' as never,
           {
             event: config.event || '*',
             schema: config.schema || 'public',
@@ -73,7 +74,7 @@ export function useSupabaseTable(
     channelRef.current = supabase
       .channel(`${table}-changes-${Date.now()}`)
       .on(
-        'postgres_changes',
+        'postgres_changes' as never,
         { event, schema: 'public', table },
         onPayload
       )

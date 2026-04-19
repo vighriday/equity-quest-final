@@ -318,39 +318,42 @@ const Admin = () => {
     ]);
   }, [fetchAssets, fetchUsers, fetchRoundStatus, fetchTeamMonitoring, fetchCompetitionStatus, fetchBlackSwanStatus, fetchNewsItems]);
 
-  const initializeServices = useCallback(async () => {
-    try {
-      // Initialize price update service
-      await priceUpdateService.initialize();
-      
-      // Update noise stats
-      updateNoiseStats();
-      
-      // Set up interval to update noise stats
-      const interval = setInterval(updateNoiseStats, 5000);
-      
-      return () => clearInterval(interval);
-    } catch (error) {
-      console.error('Error initializing services:', error);
-    }
-  }, [updateNoiseStats]);
-
   useEffect(() => {
+    let cancelled = false;
+    let noiseStatsInterval: ReturnType<typeof setInterval> | null = null;
+
+    const init = async () => {
+      try {
+        await priceUpdateService.initialize();
+        if (cancelled) return;
+        updateNoiseStats();
+        noiseStatsInterval = setInterval(updateNoiseStats, 5000);
+      } catch (error) {
+        console.error('Error initializing services:', error);
+      }
+    };
+
     fetchData();
-    initializeServices();
+    init();
     fetchShortSellingStatus();
 
     const assetsChannel = supabase
       .channel('admin-assets')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'assets' }, () => {
-        fetchAssets();
-      })
+      .on(
+        'postgres_changes' as never,
+        { event: '*', schema: 'public', table: 'assets' },
+        () => {
+          fetchAssets();
+        },
+      )
       .subscribe();
 
     return () => {
+      cancelled = true;
+      if (noiseStatsInterval) clearInterval(noiseStatsInterval);
       supabase.removeChannel(assetsChannel);
     };
-  }, [fetchData, initializeServices, fetchAssets, fetchShortSellingStatus]);
+  }, [fetchData, updateNoiseStats, fetchAssets, fetchShortSellingStatus]);
 
   const toggleShortSelling = async () => {
     try {
@@ -1846,7 +1849,7 @@ const Admin = () => {
                         <div>
                           <p className="text-sm text-muted-foreground">Updates</p>
                           <p className="font-semibold">
-                            {'updateCount' in noiseStats ? noiseStats.updateCount : 0}
+                            {'updateCount' in noiseStats ? String((noiseStats as { updateCount: number | string }).updateCount) : 0}
                           </p>
                         </div>
                       </div>

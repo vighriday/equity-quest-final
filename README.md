@@ -1,259 +1,334 @@
-<!-- PROJECT LOGO -->
-<p align="center">
-  <img src="https://img.shields.io/badge/Equity%20Quest-The%20Apex%20Investors'%20Gauntlet-0a0a0a?style=for-the-badge&logo=react&logoColor=61DAFB" alt="Equity Quest"/>
-</p>
+<div align="center">
 
-<h1 align="center">🦅 Equity Quest: The Apex Investors’ Gauntlet</h1>
+# EquityQuest
 
-<p align="center">
-  <b>India’s Most Comprehensive Mock Stock-Trading Competition Platform</b><br/>
-  <i>Built for strategy. Engineered for precision. Designed for excellence.</i><br/><br/>
-  <img src="https://img.shields.io/badge/React-18.3.1-blue?logo=react" />
-  <img src="https://img.shields.io/badge/Vite-7.1.9-purple?logo=vite" />
-  <img src="https://img.shields.io/badge/TailwindCSS-3.4.17-38B2AC?logo=tailwindcss" />
-  <img src="https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase" />
-  <img src="https://img.shields.io/badge/License-MIT-yellow.svg" />
-</p>
+**A multi-user, real-time stock-trading simulation built on a normalized PostgreSQL schema with row-level security, triggers, stored procedures and live publication channels.**
 
----
+[![React](https://img.shields.io/badge/React-18.3-149ECA?logo=react&logoColor=white)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?logo=vite&logoColor=white)](https://vitejs.dev)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org)
+[![Supabase](https://img.shields.io/badge/Supabase-Edge-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com)
+[![Tailwind](https://img.shields.io/badge/Tailwind-3.4-38B2AC?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](#license)
 
-## 📚 Table of Contents
-1. [Overview](#-project-overview)
-2. [Technical Architecture](#-technical-architecture)
-3. [Gameplay Philosophy](#-gameplay-philosophy)
-4. [Page-by-Page Guide](#-page-by-page-documentation)
-5. [Component Inventory](#-component-inventory)
-6. [User Flows & Navigation](#-user-flows--navigation)
-7. [Database Schema](#-database-schema)
-8. [API & Edge Functions](#-api-endpoints--services)
-9. [Authentication & Authorization](#-authentication--authorization)
-10. [Real-time Systems](#-real-time-features)
-11. [Admin Panel](#-admin-functionality)
-12. [Trading System](#-trading-system)
-13. [Competition Mechanics](#-competition-mechanics)
-14. [UI / UX Design System](#-uiux-components)
-15. [Performance & Security](#-performance--security)
-16. [Development & Deployment](#-development--deployment)
-17. [License](#-license)
+</div>
 
 ---
 
-## 🎯 Project Overview
-**Equity Quest** is a next-generation mock stock trading competition platform that simulates real-world financial markets with institutional-level precision.
-It challenges participants to navigate volatility, misinformation, and risk through real-time trading, advanced order types, and dynamic competition mechanics.
+## Table of Contents
 
-Built with **React, TypeScript, and Supabase**, Equity Quest delivers a seamless, data-driven trading experience featuring live price feeds, margin management, and real-time leaderboards.
-Each player competes through three escalating rounds — from fundamental analysis to chaotic macroeconomic shocks — earning scores based on both profitability and risk-adjusted performance (Sortino Ratio).
-
-Designed for **educational institutions, finance clubs, and investment leagues**, the platform blends gamification, analytics, and financial strategy to teach participants the art of conviction-based investing under pressure.
-
-
-### ✨ Highlights
-- ⚡ Real-time order execution & live feeds  
-- 🏁 Three escalating competition rounds  
-- 📉 Market, Limit & Stop-Loss orders  
-- 🧮 Short selling with margin rules  
-- 🏦 Live leaderboards (P&L + Sortino Ratio)  
-- 🛡️ Margin calls & exposure controls  
-- 🧠 Admin control for events & resets  
-
----
-
-## 🏗️ Technical Architecture
-**Frontend**
-| Layer | Tech |
-|-------|------|
-| Framework | React 18 + TypeScript |
-| Builder | Vite 7 |
-| UI | Shadcn/UI + Radix Primitives |
-| Styling | TailwindCSS 3 |
-| State | React Context + React Query |
-| Charts | Recharts |
-| Routing | React Router 6 |
-
-**Backend**
-| Layer | Tech |
-|-------|------|
-| DB | Supabase (PostgreSQL + RLS) |
-| Auth | Supabase Auth (JWT Sessions) |
-| Real-time | Supabase Realtime |
-| Serverless | Supabase Edge Functions |
-| API | REST + RPC Functions |
+1.  [What is EquityQuest?](#1-what-is-equityquest)
+2.  [DBMS Lab Positioning](#2-dbms-lab-positioning)
+3.  [Architecture at a Glance](#3-architecture-at-a-glance)
+4.  [Database Layer](#4-database-layer)
+    -   [Entity-Relationship Overview](#entity-relationship-overview)
+    -   [Tables & Relationships](#tables--relationships)
+    -   [Stored Procedures, Triggers & Views](#stored-procedures-triggers--views)
+    -   [Row-Level Security (RBAC)](#row-level-security-rbac)
+5.  [Application Layer](#5-application-layer)
+6.  [Edge Functions (Server-Side Jobs)](#6-edge-functions-server-side-jobs)
+7.  [Getting Started](#7-getting-started)
+8.  [Project Structure](#8-project-structure)
+9.  [Build, Test & Deploy](#9-build-test--deploy)
+10. [Team & Contributions](#10-team--contributions)
+11. [License](#license)
 
 ---
 
-## 🧠 Gameplay Philosophy
-> Adapted from **_The Apex Investors’ Gauntlet – Final Definitive Edition_**
+## 1. What is EquityQuest?
 
-Success in Equity Quest demands foresight, risk management, and mental resilience.  
-The objective isn’t simply profit — it’s to prove strategic superiority under pressure.
+**EquityQuest** is a competition-style mock stock-trading platform.  Each
+participant starts with a virtual ₹500,000, places **market / limit /
+stop-loss** orders against a curated NIFTY-50 universe (plus gold / silver
+commodities), and competes across three timed rounds while the platform
+injects scripted news catalysts, gap moves and the occasional black-swan
+crash that triggers an exchange-wide trading halt.
 
-### 🎮 Market Instruments
-- **Tier 1 Equities:** NIFTY 50 constituents  
-- **Tier 2 Commodities:** Gold (XAU/INR), Silver (XAG/INR)  
-- 💰 Starting Capital ₹5,00,000  💱 No Leverage  
-- 📊 Friction 0.10 % per trade  🔒 Circuit limits ±10 %(equities)/±6 %(commodities)
+The platform is **multi-tenant from day one**: every order, position and
+portfolio row is scoped to its owner by PostgreSQL **row-level security**,
+admins live in a separate role, and an **owner** role exists for the
+ultimate kill-switch.  All money-affecting operations are wrapped in
+PL/pgSQL functions that enforce business rules **inside the database**
+so a malicious or buggy client cannot put the system into an
+inconsistent state.
 
-### 🧩 Information & Deception Engine
-- Tiered information quality — some tips true, some false.  
-- Insider information can be traded once for 2 % of portfolio value.  
-- Mid-round catalysts create unpredictable chain reactions.
-
-### 🕹️ Round Structure
-| Round | Theme | Duration | Shorting | Example Events |
-|--------|--------|-----------|-----------|----------------|
-| 1 – Fundamentals Floor | Pure fundamentals | 20 min | 🚫 No | Sector news, earnings |
-| 2 – Fog of War | Conflicting signals | 30 min | ✅ Yes | IT whiplash, insider tips |
-| 3 – Macro Meltdown | Volatile macro | 30 min | ✅ Yes | RBI shock, Black Swan |
-
-### 📈 Scoring Doctrine
-`Final Score = 70 % Portfolio P&L + 30 % Sortino Ratio`
-
----
-
-## 📄 Page-by-Page Documentation
-*(Excerpt — full section continues in `/docs`)*  
-- **Landing Page:** Hero banner + feature cards + CTA  
-- **Auth Page:** Tabs for Login/Signup w/ Zod validation  
-- **Dashboard:** Portfolio cards, trading panel, positions table  
-- **Market Analysis:** Sector overview + Recharts visuals  
-- **Leaderboard:** Live rankings + Sortino breakdown  
-- **Messages:** User/Admin messaging system  
-- **Transactions:** Order history + CSV export  
-- **Admin:** Round control, resets, market events  
-- **404:** Fallback page with return CTA  
+| Domain                     | Surface area                                                                 |
+|----------------------------|------------------------------------------------------------------------------|
+| Entities (tables)          | **19** normalized to 3NF                                                     |
+| Stored procedures / triggers | **5 functions, 7 triggers**                                                |
+| RLS policies               | **30+** (owner / admin / user)                                               |
+| Edge Functions             | **5** (price noise, event executor, margin checker, yFinance, black-swan)   |
+| Realtime channels          | **7 tables** published over WebSockets                                       |
+| Frontend pages             | **13**                                                                       |
+| Custom components          | **17** (excluding shadcn primitives)                                         |
+| Lines of TypeScript        | ~16,000                                                                      |
 
 ---
 
-## 🧩 Component Inventory
-- **Layouts:** `DashboardLayout`, `ProtectedRoute`
-- **Trading:** `MarketOverview`, `SectorNavigation`, `StockDetailView`
-- **UI Primitives:** Buttons, Cards, Tabs, Toasts, Dialogs, Badges  
-- **Charts:** Integrated Recharts line + bar components  
-- **Forms:** Zod validation via Inputs, Selects, Switches  
+## 2. DBMS Lab Positioning
+
+This repository is also the deliverable for our **Database Management
+Systems** lab.  When you read it through that lens, the interesting
+parts are:
+
+| DBMS concept                     | Where to look                                                      |
+|----------------------------------|--------------------------------------------------------------------|
+| ER design & 3NF normalization    | [`docs/PROJECT_REPORT.md`](docs/PROJECT_REPORT.md) §3              |
+| DDL (CREATE TABLE, ENUM, INDEX)  | [`supabase/migrations/`](supabase/migrations)                      |
+| Constraints (PK / FK / CHECK)    | [`20260419120000_schema_hardening_indexes_and_constraints.sql`](supabase/migrations/20260419120000_schema_hardening_indexes_and_constraints.sql) |
+| DML examples                     | [`docs/PROJECT_REPORT.md`](docs/PROJECT_REPORT.md) §6              |
+| Stored procedures (PL/pgSQL)     | `reset_competition_all_users`, `snapshot_portfolio_history`        |
+| Triggers                         | `update_updated_at_column`, `handle_new_user`, `trg_snapshot_*`    |
+| Views                            | `public.leaderboard`                                               |
+| Indexing strategy                | hardening migration §3 (24 indexes incl. partial)                  |
+| RBAC / RLS                       | initial migration §RLS + hardening §RLS                            |
+| Transactions & locks             | [`src/services/orderExecution.ts`](src/services/orderExecution.ts) |
+| Realtime / publications          | `ALTER PUBLICATION supabase_realtime ADD TABLE …`                  |
+
+The full report, ready to print/submit, lives at
+[**docs/PROJECT_REPORT.md**](docs/PROJECT_REPORT.md).
 
 ---
 
-## 🗺️ User Flows & Navigation
-**Authentication:** Landing → Auth → Dashboard  
-**Trading:** Dashboard → Select Asset → Place Order → Realtime Update  
-**Competition:** Admin → Start Round → Leaderboard → Results  
+## 3. Architecture at a Glance
 
-Navigation includes Dashboard, Market, Leaderboard, Messages, Transactions (+ Admin panel for admins).
-
----
-
-## 🗄️ Database Schema
-**Core Tables**
-`users`, `profiles`, `user_roles`, `assets`, `portfolios`, `positions`, `orders`, `transactions`, `competition_rounds`, `competition_events`, `news`, `messages`, `margin_warnings`, `portfolio_history`, `price_fluctuation_log`, `financial_metrics`
-
-**Relations**
-- `users → profiles (1:1)`  
-- `users → positions/orders (1:many)`  
-- `assets → positions/orders (1:many)`
-
----
-
-## 🔌 API Endpoints & Services
-**RPC Functions**
-- `reset_competition()` – Full system reset  
-- `is_admin_or_owner()` – Role validation  
-- `handle_new_user()` – Profile bootstrap  
-
-**Edge Functions**
-- `fetch-yfinance-data` – Live price sync  
-- `background-price-noise` – Simulated fluctuations  
-- `black-swan-event` – Crash simulation  
-- `check-margins` – Margin rules engine  
-
-**Realtime Subscriptions**
-Assets, Portfolios, Orders, News, Rounds, Margin Warnings
+```
+┌────────────────────────────────────────────────────────────────┐
+│                       React 18 / TypeScript                    │
+│  pages • components • services (singleton engines) • hooks     │
+└─────────────────────────┬──────────────────────────────────────┘
+                          │   @supabase/supabase-js
+                          ▼
+┌────────────────────────────────────────────────────────────────┐
+│                    Supabase Gateway (REST + WS)                │
+│  Auth • PostgREST • Realtime • Edge Functions (Deno)           │
+└─────────────────────────┬──────────────────────────────────────┘
+                          │
+                          ▼
+┌────────────────────────────────────────────────────────────────┐
+│                       PostgreSQL 17                            │
+│   19 tables • 5 enums • 5 functions • 7 triggers • 30+ RLS    │
+│   policies • supabase_realtime publication on 7 tables         │
+└────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## 🔐 Authentication & Authorization
-- **Auth:** Supabase email/password + auto token refresh  
-- **Roles:** owner / admin / user  
-- **RLS Policies:** row-level security enforced  
-- **ProtectedRoute** guards front-end access  
-- **Validation:** Zod schemas for inputs + Supabase constraints  
+## 4. Database Layer
+
+### Entity-Relationship Overview
+
+```
+auth.users ─────► profiles ─────► user_roles            (RBAC)
+                     │
+                     ├──── portfolios (1:1)
+                     │         └── positions ──► assets
+                     │
+                     ├──── orders ────────────► assets
+                     ├──── transactions ──────► assets
+                     ├──── messages
+                     └──── news (published_by)
+
+assets ─────► price_history
+       └────► price_fluctuation_log ──► competition_events
+       └────► financial_metrics
+
+competition_rounds   competition_settings    portfolio_history
+margin_warnings      admin_messages          team_codes
+```
+
+### Tables & Relationships
+
+A complete list lives in `docs/PROJECT_REPORT.md`, §4 (DDL).  Every
+table has:
+
+* a UUID primary key (`gen_random_uuid()`),
+* `created_at` / `updated_at` columns maintained by the
+  `update_updated_at_column()` trigger,
+* `ON DELETE CASCADE` for child tables (so removing a user reaps
+  their portfolio, positions, orders and transactions atomically),
+* a CHECK constraint where a business rule applies (e.g.
+  `cash_balance >= 0`, `quantity > 0`,
+  `(order_type='limit' AND price IS NOT NULL) OR …`).
+
+### Stored Procedures, Triggers & Views
+
+| Object | Type | Purpose |
+|---|---|---|
+| `has_role(uuid, app_role)` | SQL function | RLS predicate helper |
+| `is_admin_or_owner(uuid)` | SQL function | RLS predicate helper |
+| `update_updated_at_column()` | trigger fn | maintains `updated_at` on 6 tables |
+| `handle_new_user()` | trigger fn (`AFTER INSERT ON auth.users`) | bootstraps profile + role + portfolio |
+| `reset_competition_all_users(starting_cash NUMERIC)` | PL/pgSQL `SECURITY DEFINER` | wipes round state, restores cash, returns JSONB summary |
+| `snapshot_portfolio_history()` | trigger fn | auto-records P&L history on every portfolio update |
+| `public.leaderboard` | view | live ranked portfolio standings |
+
+### Row-Level Security (RBAC)
+
+Three roles live in `app_role`: **`owner`**, **`admin`**, **`user`**.
+RLS policies are written using `is_admin_or_owner(auth.uid())` so
+adding a fourth role (e.g. `auditor`) is a one-line change.
+
+| Table | SELECT | INSERT | UPDATE | DELETE |
+|---|---|---|---|---|
+| `profiles` | own / admin all | own | own | – |
+| `user_roles` | own / admin all | admin | admin | admin |
+| `portfolios` | own / admin all | own | own | – |
+| `positions`  | own / admin all | own | own | own |
+| `orders`     | own / admin all | own | own | own |
+| `transactions` | own / admin all | own | – | – |
+| `assets` | everyone | admin | admin | admin |
+| `competition_*` | everyone | admin | admin | admin |
+| `margin_warnings` | own | system | own (`is_read`) | – |
+| `news`, `messages` | filtered | admin | admin | admin |
 
 ---
 
-## ⚡ Real-time Features
-- Live asset prices & portfolio P&L  
-- Instant order execution feedback  
-- Realtime leaderboard & news feed  
-- Auto-reconnection WebSockets per page  
+## 5. Application Layer
+
+```
+src/
+├─ pages/          13 routes (Dashboard, Admin, Auth, Leaderboard, …)
+├─ components/     custom React components
+├─ components/ui/  shadcn primitives (do not edit)
+├─ services/       singleton engines (orderExecution, priceNoise, …)
+├─ hooks/          useDebounce, useSupabaseChannel
+├─ lib/            constants.ts, utils.ts
+├─ data/           static asset universe (NIFTY-50)
+└─ integrations/   Supabase client + generated DB types
+```
+
+Highlights:
+
+* **`OrderExecutionEngine`** ([src/services/orderExecution.ts](src/services/orderExecution.ts))
+  serializes per-user orders behind a `Map<userId, Promise>` mutex,
+  validates margin, computes weighted-average entry price for partial
+  fills and writes the order, position and transaction in a single
+  trip.
+* **`PriceNoiseService`** ([src/services/priceNoiseService.ts](src/services/priceNoiseService.ts))
+  applies independent ±0.5% random walks to every active asset on
+  configurable intervals while honouring per-asset circuit limits.
+* **`ErrorBoundary`**, **`LoadingSkeleton`**, **`EmptyState`** and
+  **`ConfirmDialog`** are app-wide quality primitives.
 
 ---
 
-## 👑 Admin Functionality
-- Round Control: start/pause/end/advance  
-- Data Reset toggles (orders, positions, news, etc.)  
-- Market Events & Black Swan triggers  
-- User role management  
-- Live analytics & risk tracking  
+## 6. Edge Functions (Server-Side Jobs)
+
+Located in [`supabase/functions/`](supabase/functions). Deno runtime,
+deployed independently:
+
+| Function | Trigger | Tables touched |
+|---|---|---|
+| `background-price-noise` | scheduled | `assets`, `price_fluctuation_log` |
+| `black-swan-event`       | admin | `assets`, `competition_events`, `competition_settings`, `news`, `price_fluctuation_log` |
+| `check-margins`          | scheduled | `positions`, `portfolios`, `margin_warnings`, `orders` |
+| `execute-event`          | admin / scheduler | `competition_events`, `assets`, `price_fluctuation_log` |
+| `fetch-yfinance-data`    | manual | `assets`, `financial_metrics` |
 
 ---
 
-## 📈 Trading System
-- Market / Limit / Stop-Loss orders  
-- Short selling (25 % initial margin / 15 % maintenance)  
-- Auto liquidation on breach  
-- Position & sector limits  
-- Friction 0.10 % per trade  
-- Price validation & funds check  
+## 7. Getting Started
+
+### Prerequisites
+
+* **Node ≥ 20** (or Bun ≥ 1.1)
+* **Supabase project** — free tier is fine
+* PostgreSQL extensions: `uuid-ossp`, `pgcrypto` (enabled by default on Supabase)
+
+### Setup
+
+```bash
+# 1. Clone
+git clone https://github.com/vighriday/equity-quest-final.git
+cd equity-quest-final
+
+# 2. Install
+npm install     # or:  bun install
+
+# 3. Configure
+cp .env.example .env
+#   fill in:
+#     VITE_SUPABASE_URL
+#     VITE_SUPABASE_ANON_KEY        (and PROJECT_ID / PUBLISHABLE_KEY)
+
+# 4. Run migrations against your Supabase project
+supabase link --project-ref <your-ref>
+supabase db push
+
+# 5. Start the dev server
+npm run dev      # http://localhost:8080
+```
+
+### One-shot reset
+
+To wipe all competition state (orders, positions, transactions,
+margin warnings) and restore everyone to the starting cash:
+
+```sql
+SELECT public.reset_competition_all_users(500000);
+```
+
+(Only callable by users with the `admin` or `owner` role.)
 
 ---
 
-## 🏆 Competition Mechanics
-| Component | Weight | Metric |
-|------------|---------|--------|
-| Portfolio P&L | 70 % | Net return |
-| Sortino Ratio | 30 % | Risk-adjusted return |
+## 8. Project Structure
 
-**Market Events**
-- Sector / Global / Commodity / Policy / Geopolitical / Black Swan  
-All executed via Supabase Edge functions + real-time propagation.
-
----
-
-## 🎨 UI / UX Components
-- Color System: Primary, Success, Warning, Error  
-- Typography: Inter font, responsive scale  
-- Animations: Framer Motion transitions  
-- Responsive: Mobile-first grid/flex layouts  
-- Feedback: Toasts + Skeleton loaders + clear error states  
-
----
-
-## 🚀 Performance & Security
-- Route-level code splitting & lazy loading  
-- Memoization (useMemo / React.memo)  
-- Tree-shaking + asset minification  
-- Input sanitization (XSS safe)  
-- Parameterized queries (SQL safe)  
-- Rate-limiting for Edge functions  
-- JWT validation & role-based guards  
+```
+equity-quest-final/
+├─ src/
+│  ├─ pages/                Route components
+│  ├─ components/           App-specific React components
+│  ├─ components/ui/        shadcn/ui primitives
+│  ├─ services/             Business-logic engines (singletons)
+│  ├─ hooks/                Custom React hooks
+│  ├─ lib/                  constants.ts, utils.ts
+│  ├─ data/                 Static asset universe
+│  └─ integrations/supabase Generated types + client
+├─ supabase/
+│  ├─ migrations/           DDL (versioned, idempotent)
+│  └─ functions/            Edge functions (Deno)
+├─ docs/
+│  └─ PROJECT_REPORT.md     Full DBMS lab report
+└─ public/                  Static assets
+```
 
 ---
 
-## 🔧 Development & Deployment
-**Dev Tools:** Vite | ESLint | TypeScript | Hot Reload  
-**Build:** Optimized production bundle + asset compression  
-**Env:** `.env.local` for Supabase keys  
-**Deploy:** Static hosting (Vercel / Netlify / Supabase Hosting)  
+## 9. Build, Test & Deploy
+
+```bash
+npm run dev       # Vite dev server
+npm run build     # production bundle into dist/
+npm run lint      # ESLint
+npm run preview   # serve production bundle locally
+```
+
+Deployment is configured for **Vercel** ([`vercel.json`](vercel.json)).
+The `dist/` directory is a fully static SPA; all dynamic behaviour
+runs in Supabase.
 
 ---
 
-## 📜 License
-Distributed under the MIT License.  
-© 2025 **Equity Quest** — All Rights Reserved.  
+## 10. Team & Contributions
+
+| Member | Role |
+|---|---|
+| **Hemant Taneja** | Schema design — normalized SQL schema with keys, constraints, table relationships for users, assets, portfolios, orders, events, logs |
+| **Hriday Vig** | Business rules — order states, margin checks, short-selling control, position limits, round-based validation |
+| **Dhruv Mohapatra** | Security & operations — role policies, access control, migration handling, reset functions, audit/history queries |
 
 ---
 
-<p align="center">
-  <i>“The Apex Investors’ Gauntlet isn’t just a simulation — it’s a test of conviction.”</i><br/>
-  🦅 <b>Equity Quest</b> · Institutional-grade Trading Simulation Platform
-</p>
+## License
+
+This project is licensed under the MIT License — see the `LICENSE`
+file (or the badge at the top) for details.
+
+---
+
+<div align="center">
+  <sub>EquityQuest · Built for the DBMS Lab · 2026</sub>
+</div>

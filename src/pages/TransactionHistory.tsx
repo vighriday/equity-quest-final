@@ -22,13 +22,22 @@ import { toast } from "sonner";
 import { TableSkeleton } from "@/components/LoadingSkeleton";
 import { EmptyState } from "@/components/EmptyState";
 
+type OrderStatus =
+  | "pending"
+  | "executed"
+  | "cancelled"
+  | "rejected"
+  | "processing"
+  | "failed";
+type OrderTypeName = "market" | "limit" | "stop_loss";
+
 interface Order {
   id: string;
-  order_type: "market" | "limit" | "stop_loss";
+  order_type: OrderTypeName;
   quantity: number;
   price: number | null;
   stop_price: number | null;
-  status: "pending" | "executed" | "cancelled" | "rejected";
+  status: OrderStatus;
   executed_price: number | null;
   executed_at: string | null;
   is_buy: boolean;
@@ -94,12 +103,12 @@ const TransactionHistory = () => {
 
       // Apply status filter at the query level when possible
       if (statusFilter !== "all") {
-        query = query.eq("status", statusFilter);
+        query = query.eq("status", statusFilter as OrderStatus);
       }
 
       // Apply type filter at the query level when possible
       if (typeFilter !== "all") {
-        query = query.eq("order_type", typeFilter);
+        query = query.eq("order_type", typeFilter as OrderTypeName);
       }
 
       const from = (currentPage - 1) * ORDERS_PER_PAGE;
