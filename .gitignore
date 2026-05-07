@@ -22,3 +22,13 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Supabase CLI runtime cache (per-machine, not source)
+supabase/.temp/
+supabase/.branches/
+
+# Database backups (do not commit)
+*.backup
+*.backup.gz
+*.dump
+*.sql.gz

@@ -651,7 +651,7 @@ const Dashboard = () => {
                 <PieChart className="h-3.5 w-3.5 text-primary" />
               </div>
               <div className="min-w-0">
-                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Total Value</p>
+                <p className="text-[11px] font-semibold text-foreground/70 uppercase tracking-wider">Total Value</p>
                 <div className="text-lg font-bold">
                   <AnimatedCounter value={activePortfolio?.total_value ?? 0} prefix="₹" decimals={2} />
                 </div>
@@ -664,7 +664,7 @@ const Dashboard = () => {
                 <Wallet className="h-3.5 w-3.5 text-primary" />
               </div>
               <div className="min-w-0">
-                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Cash</p>
+                <p className="text-[11px] font-semibold text-foreground/70 uppercase tracking-wider">Cash</p>
                 <div className="text-lg font-bold">
                   <AnimatedCounter value={activePortfolio?.cash_balance ?? 0} prefix="₹" decimals={2} />
                 </div>
@@ -681,7 +681,7 @@ const Dashboard = () => {
                 )}
               </div>
               <div className="min-w-0">
-                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">P&L</p>
+                <p className="text-[11px] font-semibold text-foreground/70 uppercase tracking-wider">P&L</p>
                 <div className={`text-lg font-bold ${activePortfolio && activePortfolio.profit_loss >= 0 ? 'text-profit' : 'text-loss'}`}>
                   <AnimatedCounter value={activePortfolio?.profit_loss ?? 0} prefix="₹" decimals={2} />
                 </div>
@@ -698,7 +698,7 @@ const Dashboard = () => {
                 )}
               </div>
               <div className="min-w-0">
-                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Return</p>
+                <p className="text-[11px] font-semibold text-foreground/70 uppercase tracking-wider">Return</p>
                 <div className={`text-lg font-bold ${activePortfolio && activePortfolio.profit_loss_percentage >= 0 ? 'text-profit' : 'text-loss'}`}>
                   <AnimatedCounter value={activePortfolio?.profit_loss_percentage ?? 0} suffix="%" decimals={2} />
                 </div>
@@ -709,18 +709,18 @@ const Dashboard = () => {
 
         {/* Competition Status Banner */}
         {competitionStatus !== "active" && (
-          <div className="glass-card px-4 py-3">
+          <div className={`glass-card px-4 py-3 border-l-4 ${competitionStatus === "not_started" ? "border-l-loss" : "border-l-warning"}`}>
             <div className="flex items-center gap-2.5">
               <div className={`rounded-full p-1.5 ${competitionStatus === "not_started" ? "bg-loss/10" : "bg-warning/10"}`}>
                 <AlertCircle className={`h-4 w-4 ${competitionStatus === "not_started" ? "text-loss" : "text-warning"}`} />
               </div>
               <div>
-                <h3 className="font-semibold text-sm">
+                <h3 className={`font-semibold text-sm ${competitionStatus === "not_started" ? "text-loss" : "text-warning"}`}>
                   Competition {competitionStatus === "not_started" ? "Not Started" :
                               competitionStatus === "paused" ? "Paused" :
                               competitionStatus === "completed" ? "Completed" : "Inactive"}
                 </h3>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-foreground/85 mt-0.5">
                   {competitionStatus === "not_started" ? "The competition has not been started yet. Please wait for the admin to begin." :
                    competitionStatus === "paused" ? "The competition is currently paused. Trading is disabled." :
                    competitionStatus === "completed" ? "The competition has ended. Thank you for participating!" :
@@ -754,7 +754,7 @@ const Dashboard = () => {
             <div className="p-4 space-y-4">
               {/* Asset Selector */}
               <div className="space-y-2">
-                <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Asset</Label>
+                <Label className="text-[11px] font-semibold text-foreground/70 uppercase tracking-wider">Asset</Label>
                 <Select value={selectedAsset} onValueChange={setSelectedAsset}>
                   <SelectTrigger className="input-enhanced h-11">
                     <SelectValue placeholder="Choose an asset to trade" />
@@ -772,7 +772,7 @@ const Dashboard = () => {
 
               {/* Order Type Button Group */}
               <div className="space-y-2">
-                <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Order Type</Label>
+                <Label className="text-[11px] font-semibold text-foreground/70 uppercase tracking-wider">Order Type</Label>
                 <div className="flex gap-1 p-1 bg-muted/40 rounded-lg border border-border/30">
                   {[
                     { value: "market", label: "Market" },
@@ -796,7 +796,7 @@ const Dashboard = () => {
 
               {/* Quantity */}
               <div className="space-y-2">
-                <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Qty</Label>
+                <Label className="text-[11px] font-semibold text-foreground/70 uppercase tracking-wider">Qty</Label>
                 <Input
                   type="number"
                   placeholder="Enter quantity"
@@ -832,7 +832,7 @@ const Dashboard = () => {
               {/* Limit / Stop Price (conditional) */}
               {(orderType === "limit" || orderType === "stop_loss") && (
                 <div className="space-y-2 animate-fade-in">
-                  <Label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                  <Label className="text-[11px] font-semibold text-foreground/70 uppercase tracking-wider">
                     {orderType === "limit" ? "Limit Price" : "Stop Price"}
                   </Label>
                   <Input
